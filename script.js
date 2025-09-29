@@ -111,9 +111,10 @@ function closeFullscreen() {
         fullscreenVideo.removeEventListener('loadstart', showFullscreenLoading);
         fullscreenVideo.removeEventListener('loadeddata', hideFullscreenLoading);
         
-        // 清除视频源 - 使用更安全的方式
+        // 清除视频源 - 使用更安全的方式，避免触发错误事件
         try {
-            fullscreenVideo.src = '';
+            // 先移除src属性，避免触发error事件
+            fullscreenVideo.removeAttribute('src');
             fullscreenVideo.load(); // 重新加载以清除状态
         } catch (e) {
             console.log('清除视频源时出现错误:', e);
@@ -350,6 +351,52 @@ document.addEventListener('visibilitychange', function() {
     }
 });
 
+// 图片全屏功能
+function openImageFullscreen(imageSrc) {
+    const modal = document.getElementById('image-modal');
+    const fullscreenImage = document.getElementById('fullscreen-image');
+    
+    if (!modal || !fullscreenImage) return;
+    
+    // 设置图片源
+    fullscreenImage.src = imageSrc;
+    
+    // 显示模态框
+    modal.classList.add('active');
+    
+    // 添加点击背景关闭功能
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeImageFullscreen();
+        }
+    });
+    
+    // ESC键关闭
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeImageFullscreen();
+        }
+    });
+}
+
+// 关闭图片全屏
+function closeImageFullscreen() {
+    const modal = document.getElementById('image-modal');
+    const fullscreenImage = document.getElementById('fullscreen-image');
+    
+    if (!modal) return;
+    
+    // 隐藏模态框
+    modal.classList.remove('active');
+    
+    // 清除图片源
+    if (fullscreenImage) {
+        fullscreenImage.src = '';
+    }
+}
+
 // 导出函数供全局使用
 window.playFullscreen = playFullscreen;
 window.closeFullscreen = closeFullscreen;
+window.openImageFullscreen = openImageFullscreen;
+window.closeImageFullscreen = closeImageFullscreen;

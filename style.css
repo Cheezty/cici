@@ -17,7 +17,7 @@ body {
 /* 容器布局 */
 .container {
     max-width: 100%;
-    width: 100%;
+    width: calc(100% - 20px);
     margin: 0 auto;
     background: white;
     border-radius: 20px;
@@ -133,6 +133,183 @@ body {
     border-radius: 2px;
 }
 
+/* 出演经历区域样式 */
+.experience-section {
+    margin-bottom: 40px;
+}
+
+.experience-content {
+    background: #f8f9ff;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #e8ecff;
+}
+
+.experience-item {
+    margin-bottom: 25px;
+}
+
+.experience-item:last-child {
+    margin-bottom: 0;
+}
+
+.experience-type {
+    font-size: 18px;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 15px;
+    padding: 8px 15px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 20px;
+    display: inline-block;
+    text-align: center;
+    min-width: 120px;
+}
+
+.work-item {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid #667eea;
+}
+
+.work-item:last-child {
+    margin-bottom: 0;
+}
+
+.work-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.work-details {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.5;
+}
+
+/* 短剧经历文本列表样式 */
+.short-drama-list {
+    background: #f8f9ff;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #e8ecff;
+}
+
+.drama-text-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid #667eea;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.drama-text-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.drama-text-item:last-child {
+    margin-bottom: 0;
+}
+
+.drama-title-text {
+    font-size: 15px;
+    font-weight: bold;
+    color: #333;
+    flex: 1;
+    margin-right: 15px;
+    line-height: 1.4;
+}
+
+.drama-actor-text {
+    font-size: 13px;
+    color: #666;
+    white-space: nowrap;
+    background: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+/* 短剧经历网格布局 */
+.short-drama-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.short-drama-item {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.short-drama-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.drama-preview {
+    position: relative;
+    aspect-ratio: 1;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #f0f0f0, #e0e0e0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px 15px 0 0;
+}
+
+.preview-text {
+    color: #999;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.drama-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    margin: 12px 12px 8px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.drama-actor {
+    font-size: 12px;
+    color: #666;
+    margin: 0 12px 12px;
+    padding-bottom: 8px;
+}
+
 /* 视频容器基础样式 */
 .video-container {
     position: relative;
@@ -207,6 +384,73 @@ body {
     transform: scale(1.1);
 }
 
+/* 图片区域样式 */
+.image-section {
+    margin-bottom: 40px;
+}
+
+/* 横屏图片容器 */
+.image-container.horizontal {
+    aspect-ratio: 16/9;
+    width: 100%;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.image-container.horizontal:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+/* 古风造型两列网格 */
+.image-grid-two {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* 数据网格（三列） */
+.data-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* 图片项 */
+.image-item, .data-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.image-item:hover, .data-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+.image-item:active, .data-item:active {
+    transform: scale(0.95);
+}
+
+/* 图片显示 */
+.image-display {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    background: #f0f0f0;
+}
+
 /* 视频网格布局 */
 .video-grid {
     display: grid;
@@ -233,6 +477,28 @@ body {
 
 .video-item:active {
     transform: scale(0.95);
+}
+
+/* 空位占位符 */
+.video-item.empty-placeholder {
+    background: transparent;
+    border: 2px dashed #ddd;
+    cursor: default;
+    box-shadow: none;
+}
+
+.video-item.empty-placeholder:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* 横屏视频区域 */
+.horizontal-videos {
+    margin-top: 20px;
+}
+
+.horizontal-videos .video-container {
+    margin-bottom: 20px;
 }
 
 /* 移动端优化 */
@@ -269,6 +535,48 @@ body {
         margin: 25px 0 15px;
     }
     
+    /* 出演经历移动端优化 */
+    .experience-content {
+        padding: 15px;
+    }
+    
+    .experience-type {
+        font-size: 16px;
+        padding: 6px 12px;
+        min-width: 100px;
+    }
+    
+    .work-item {
+        padding: 12px;
+    }
+    
+    .work-title {
+        font-size: 15px;
+    }
+    
+    .work-details {
+        font-size: 13px;
+    }
+    
+    /* 短剧经历移动端优化 */
+    .short-drama-grid {
+        gap: 10px;
+    }
+    
+    .drama-title {
+        font-size: 13px;
+        margin: 10px 10px 6px;
+    }
+    
+    .drama-actor {
+        font-size: 11px;
+        margin: 0 10px 10px;
+    }
+    
+    .preview-text {
+        font-size: 12px;
+    }
+    
     .video-grid {
         gap: 10px;
     }
@@ -277,6 +585,37 @@ body {
         width: 50px;
         height: 50px;
         font-size: 20px;
+    }
+    
+    /* 短剧经历文本移动端优化 */
+    .drama-text-item {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 10px 12px;
+    }
+    
+    .drama-title-text {
+        font-size: 14px;
+        margin-right: 0;
+        margin-bottom: 5px;
+    }
+    
+    .drama-actor-text {
+        font-size: 12px;
+        align-self: flex-end;
+    }
+    
+    /* 图片网格移动端优化 */
+    .image-grid-two {
+        gap: 10px;
+    }
+    
+    .data-grid {
+        gap: 10px;
+    }
+    
+    .horizontal-videos .video-container {
+        margin-bottom: 15px;
     }
 }
 
@@ -292,6 +631,30 @@ body {
     z-index: 1000;
     align-items: center;
     justify-content: center;
+}
+
+/* 全屏图片模态框 */
+.image-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: black;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-modal.active {
+    display: flex;
+}
+
+#fullscreen-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
 }
 
 .fullscreen-modal.active {

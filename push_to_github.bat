@@ -1,5 +1,7 @@
 @echo off
-chcp 65001
+REM 设置控制台编码为UTF-8
+chcp 65001 >nul 2>&1
+
 echo 开始推送代码到GitHub...
 echo.
 
@@ -12,7 +14,7 @@ git add .
 echo.
 
 echo 3. 检查暂存区状态...
-git status --cached
+git diff --cached --name-only
 echo.
 
 echo 4. 提交更改...
@@ -23,5 +25,13 @@ echo 5. 推送到GitHub...
 git push origin main
 echo.
 
-echo 推送完成！
-pause
+if %ERRORLEVEL% EQU 0 (
+    echo 推送成功！
+) else (
+    echo 推送失败，错误代码: %ERRORLEVEL%
+    echo 请检查网络连接和GitHub认证
+)
+
+echo.
+echo 按任意键退出...
+pause >nul

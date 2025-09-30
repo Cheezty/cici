@@ -17,13 +17,12 @@ body {
 /* 容器布局 */
 .container {
     max-width: 100%;
-    width: calc(100% - 20px);
-    margin: 0 auto;
+    width: 100%;  /* 改为100%，让容器占满屏幕宽度 */
+    margin: 10px auto;  /* 合并margin设置 */
     background: white;
     border-radius: 20px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    margin: 10px;
 }
 
 /* 响应式断点 */
@@ -449,6 +448,29 @@ body {
     object-fit: cover;
     display: block;
     background: #f0f0f0;
+    transition: opacity 0.3s ease;
+}
+
+/* 懒加载图片样式 */
+.lazy-image {
+    opacity: 0;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+.lazy-image.loaded {
+    opacity: 1;
+    animation: none;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 /* 视频网格布局 */
@@ -504,8 +526,9 @@ body {
 /* 移动端优化 */
 @media (max-width: 767px) {
     .container {
-        margin: 5px;
-        border-radius: 15px;
+        margin: 0;  /* 移除所有边距，让内容占满屏幕 */
+        border-radius: 0;  /* 移除圆角，让内容完全贴合屏幕边缘 */
+        width: 100%;  /* 确保宽度占满整个屏幕 */
     }
     
     .header {
@@ -612,6 +635,8 @@ body {
     
     .data-grid {
         gap: 10px;
+        /* 移动端三列变两列，保持更好的视觉效果 */
+        grid-template-columns: repeat(2, 1fr);
     }
     
     .horizontal-videos .video-container {

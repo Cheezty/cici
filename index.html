@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>李林汐 - 演员资料</title>
+    
+    <!-- 预加载关键资源 -->
+    <link rel="preload" href="assets/images/avatar.jpg" as="image">
+    <link rel="preload" href="pictures/模卡1.jpg" as="image">
+    <link rel="preload" href="videos/intro.mp4" as="video">
+    
+    <!-- DNS预解析 -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -200,20 +209,48 @@
             <!-- 模卡区域 -->
             <section class="image-section">
                 <h2 class="section-title">模卡</h2>
+                <!-- 模卡1横屏单独一行 -->
                 <div class="image-container horizontal" onclick="openImageFullscreen('pictures/模卡1.jpg')">
-                    <img src="pictures/模卡1.jpg" alt="模卡1" class="image-display">
+                    <img data-src="pictures/模卡1.jpg" alt="模卡1" class="image-display lazy-image">
+                </div>
+                <!-- 模卡2和模卡3两列布局 -->
+                <div class="image-grid-two">
+                    <div class="image-item" onclick="openImageFullscreen('pictures/模卡2.jpg')">
+                        <img data-src="pictures/模卡2.jpg" alt="模卡2" class="image-display lazy-image">
+                    </div>
+                    <div class="image-item" onclick="openImageFullscreen('pictures/模卡3.jpg')">
+                        <img data-src="pictures/模卡3.jpg" alt="模卡3" class="image-display lazy-image">
+                    </div>
                 </div>
             </section>
 
             <!-- 古风造型区域 -->
             <section class="image-section">
                 <h2 class="section-title">古风造型</h2>
-                <div class="image-grid-two">
-                    <div class="image-item" onclick="openImageFullscreen('pictures/模卡2.jpg')">
-                        <img src="pictures/模卡2.jpg" alt="模卡2" class="image-display">
+                <div class="data-grid">
+                    <div class="image-item" onclick="openImageFullscreen('pictures/古风1.jpg')">
+                        <img data-src="pictures/古风1.jpg" alt="古风1" class="image-display lazy-image">
                     </div>
-                    <div class="image-item" onclick="openImageFullscreen('pictures/模卡3.jpg')">
-                        <img src="pictures/模卡3.jpg" alt="模卡3" class="image-display">
+                    <div class="image-item" onclick="openImageFullscreen('pictures/古风2.jpg')">
+                        <img data-src="pictures/古风2.jpg" alt="古风2" class="image-display lazy-image">
+                    </div>
+                    <div class="image-item" onclick="openImageFullscreen('pictures/古风3.jpg')">
+                        <img data-src="pictures/古风3.jpg" alt="古风3" class="image-display lazy-image">
+                    </div>
+                    <div class="image-item" onclick="openImageFullscreen('pictures/古风4.jpg')">
+                        <img data-src="pictures/古风4.jpg" alt="古风4" class="image-display lazy-image">
+                    </div>
+                    <div class="image-item" onclick="openImageFullscreen('pictures/古风5.jpg')">
+                        <img data-src="pictures/古风5.jpg" alt="古风5" class="image-display lazy-image">
+                    </div>
+                    <div class="image-item" onclick="openImageFullscreen('pictures/古风6.jpg')">
+                        <img data-src="pictures/古风6.jpg" alt="古风6" class="image-display lazy-image">
+                    </div>
+                    <div class="image-item" onclick="openImageFullscreen('pictures/古风7.jpg')">
+                        <img data-src="pictures/古风7.jpg" alt="古风7" class="image-display lazy-image">
+                    </div>
+                    <div class="image-item" onclick="openImageFullscreen('pictures/古风8.jpg')">
+                        <img data-src="pictures/古风8.jpg" alt="古风8" class="image-display lazy-image">
                     </div>
                 </div>
             </section>
@@ -224,11 +261,12 @@
                 <div class="video-container horizontal" onclick="playFullscreen(this.querySelector('video'))">
                     <video 
                         class="video-player" 
-                        preload="metadata"
+                        preload="none"
                         muted
                         playsinline
+                        data-src="videos/intro.mp4"
                     >
-                        <source src="videos/intro.mp4" type="video/mp4">
+                        <source data-src="videos/intro.mp4" type="video/mp4">
                         您的浏览器不支持视频播放。
                     </video>
                     <div class="play-overlay">
@@ -243,11 +281,12 @@
                 <div class="video-container horizontal" onclick="playFullscreen(this.querySelector('video'))">
                     <video 
                         class="video-player" 
-                        preload="metadata"
+                        preload="none"
                         muted
                         playsinline
+                        data-src="videos/work1.mp4"
                     >
-                        <source src="videos/work1.mp4" type="video/mp4">
+                        <source data-src="videos/work1.mp4" type="video/mp4">
                         您的浏览器不支持视频播放。
                     </video>
                     <div class="play-overlay">
@@ -263,11 +302,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work2.mp4"
                         >
-                            <source src="videos/work2.mp4" type="video/mp4">
+                            <source data-src="videos/work2.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -277,11 +317,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work3.mp4"
                         >
-                            <source src="videos/work3.mp4" type="video/mp4">
+                            <source data-src="videos/work3.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -291,11 +332,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work4.mp4"
                         >
-                            <source src="videos/work4.mp4" type="video/mp4">
+                            <source data-src="videos/work4.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -305,11 +347,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work5.mp4"
                         >
-                            <source src="videos/work5.mp4" type="video/mp4">
+                            <source data-src="videos/work5.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -319,11 +362,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work6.mp4"
                         >
-                            <source src="videos/work6.mp4" type="video/mp4">
+                            <source data-src="videos/work6.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -333,11 +377,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work7.mp4"
                         >
-                            <source src="videos/work7.mp4" type="video/mp4">
+                            <source data-src="videos/work7.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -347,11 +392,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work8.mp4"
                         >
-                            <source src="videos/work8.mp4" type="video/mp4">
+                            <source data-src="videos/work8.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -361,11 +407,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work9.mp4"
                         >
-                            <source src="videos/work9.mp4" type="video/mp4">
+                            <source data-src="videos/work9.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -375,11 +422,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work10.mp4"
                         >
-                            <source src="videos/work10.mp4" type="video/mp4">
+                            <source data-src="videos/work10.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -389,11 +437,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work11.mp4"
                         >
-                            <source src="videos/work11.mp4" type="video/mp4">
+                            <source data-src="videos/work11.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -403,11 +452,12 @@
                     <div class="video-item" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work12.mp4"
                         >
-                            <source src="videos/work12.mp4" type="video/mp4">
+                            <source data-src="videos/work12.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -423,11 +473,12 @@
                     <div class="video-container horizontal" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work13.mp4"
                         >
-                            <source src="videos/work13.mp4" type="video/mp4">
+                            <source data-src="videos/work13.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -437,11 +488,12 @@
                     <div class="video-container horizontal" onclick="playFullscreen(this.querySelector('video'))">
                         <video 
                             class="video-player" 
-                            preload="metadata"
+                            preload="none"
                             muted
                             playsinline
+                            data-src="videos/work14.mp4"
                         >
-                            <source src="videos/work14.mp4" type="video/mp4">
+                            <source data-src="videos/work14.mp4" type="video/mp4">
                         </video>
                         <div class="play-overlay">
                             <div class="play-icon">▶</div>
@@ -455,16 +507,16 @@
                 <h2 class="section-title">部分数据</h2>
                 <div class="data-grid">
                     <div class="data-item" onclick="openImageFullscreen('pictures/数据1.jpg')">
-                        <img src="pictures/数据1.jpg" alt="数据1" class="image-display">
+                        <img data-src="pictures/数据1.jpg" alt="数据1" class="image-display lazy-image">
                     </div>
                     <div class="data-item" onclick="openImageFullscreen('pictures/数据2.jpg')">
-                        <img src="pictures/数据2.jpg" alt="数据2" class="image-display">
+                        <img data-src="pictures/数据2.jpg" alt="数据2" class="image-display lazy-image">
                     </div>
                     <div class="data-item" onclick="openImageFullscreen('pictures/数据3.jpg')">
-                        <img src="pictures/数据3.jpg" alt="数据3" class="image-display">
+                        <img data-src="pictures/数据3.jpg" alt="数据3" class="image-display lazy-image">
                     </div>
                     <div class="data-item" onclick="openImageFullscreen('pictures/数据4.jpg')">
-                        <img src="pictures/数据4.jpg" alt="数据4" class="image-display">
+                        <img data-src="pictures/数据4.jpg" alt="数据4" class="image-display lazy-image">
                     </div>
                 </div>
             </section>

@@ -11,8 +11,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeApp() {
     setupVideoEvents();
     setupFullscreenEvents();
-    preloadVideos();
+    setupLazyLoading();  // 替换preloadVideos为懒加载
     setupResponsiveHandlers();
+    preloadCriticalImages();  // 预加载关键图片
 }
 
 // 设置视频事件监听
@@ -250,18 +251,115 @@ function onVideoEnd(e) {
     }
 }
 
-// 预加载视频
-function preloadVideos() {
-    const videos = document.querySelectorAll('video[preload="metadata"]');
+// 设置懒加载
+function setupLazyLoading() {
+    // 创建Intersection Observer用于懒加载
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const element = entry.target;
+                if (element.tagName === 'VIDEO') {
+                    loadVideoLazily(element);
+                } else if (element.tagName === 'IMG') {
+                    loadImageLazily(element);
+                }
+                observer.unobserve(element); // 加载后停止观察
+            }
+        });
+    }, {
+        rootMargin: '50px' // 提前50px开始加载
+    });
+
+    // 观察所有视频和图片元素
+    const videos = document.querySelectorAll('video[data-src]');
+    const images = document.querySelectorAll('img[data-src]');
+    
+    console.log('Found videos:', videos.length); // 调试信息
+    console.log('Found images:', images.length); // 调试信息
     
     videos.forEach(video => {
-        // 预加载视频元数据
+        observer.observe(video);
+    });
+    
+    images.forEach(img => {
+        observer.observe(img);
+    });
+    
+    // 立即检查可见元素
+    setTimeout(() => {
+        videos.forEach(video => {
+            const rect = video.getBoundingClientRect();
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+                loadVideoLazily(video);
+            }
+        });
+        
+        images.forEach(img => {
+            const rect = img.getBoundingClientRect();
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+                loadImageLazily(img);
+            }
+        });
+    }, 100);
+}
+
+// 懒加载视频
+function loadVideoLazily(video) {
+    const dataSrc = video.getAttribute('data-src');
+    console.log('Loading video:', dataSrc); // 调试信息
+    if (dataSrc) {
+        // 设置视频源
+        video.src = dataSrc;
+        
+        // 设置source标签
+        const source = video.querySelector('source');
+        if (source) {
+            source.src = dataSrc;
+        }
+        
+        // 预加载元数据
+        video.preload = 'metadata';
         video.load();
         
         // 确保视频显示第一帧
         video.addEventListener('loadeddata', function() {
-            this.currentTime = 0.1; // 设置到0.1秒，确保显示第一帧
-        });
+            this.currentTime = 0.1;
+            console.log('Video loaded successfully:', dataSrc); // 调试信息
+        }, { once: true });
+        
+        // 添加错误处理
+        video.addEventListener('error', function(e) {
+            console.error('Video loading error:', dataSrc, e); // 调试信息
+        }, { once: true });
+    } else {
+        console.error('No data-src found for video:', video); // 调试信息
+    }
+}
+
+// 懒加载图片
+function loadImageLazily(img) {
+    const dataSrc = img.getAttribute('data-src');
+    console.log('Loading image:', dataSrc); // 调试信息
+    if (dataSrc) {
+        img.src = dataSrc;
+        img.classList.remove('lazy-image');
+        img.classList.add('loaded');
+        console.log('Image loaded successfully:', dataSrc); // 调试信息
+    } else {
+        console.error('No data-src found for image:', img); // 调试信息
+    }
+}
+
+// 预加载关键图片（头像和模卡1）
+function preloadCriticalImages() {
+    const criticalImages = [
+        'assets/images/avatar.jpg',
+        'pictures/模卡1.jpg'
+    ];
+    
+    criticalImages.forEach(src => {
+        const img = new Image();
+        img.src = src;
     });
 }
 

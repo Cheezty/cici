@@ -26,7 +26,7 @@ git diff --cached --name-only
 echo.
 
 echo [4/6] 提交更改...
-git commit -m "优化页面加载速度：实现懒加载和修复视频播放问题"
+git commit -m "修复移动端全屏交互：美化关闭按钮和优化返回键功能"
 echo.
 
 echo [5/6] 检查远程仓库状态...

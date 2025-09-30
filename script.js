@@ -528,23 +528,37 @@ function addBackButtonHandler() {
     // 移除之前的监听器（如果存在）
     removeBackButtonHandler();
     
+    // 检查浏览器是否支持History API
+    if (!window.history || !window.history.pushState) {
+        console.log('浏览器不支持History API，跳过返回键处理');
+        return;
+    }
+    
     // 使用 History API 来处理返回按钮
     // 添加一个历史记录条目
     const state = { fullscreen: true, timestamp: Date.now() };
-    history.pushState(state, '', window.location.href);
+    try {
+        history.pushState(state, '', window.location.href);
+    } catch (e) {
+        console.log('添加历史记录失败:', e);
+        return;
+    }
     
     // 监听 popstate 事件
     backButtonHandler = function(event) {
+        console.log('返回键被按下');
         // 检查是否有全屏模态框打开
         const videoModal = document.getElementById('fullscreen-modal');
         const imageModal = document.getElementById('image-modal');
         
         if (videoModal && videoModal.classList.contains('active')) {
+            console.log('关闭视频全屏');
             // 视频全屏打开，关闭视频全屏
             closeFullscreen();
             event.preventDefault();
             return false;
         } else if (imageModal && imageModal.classList.contains('active')) {
+            console.log('关闭图片全屏');
             // 图片全屏打开，关闭图片全屏
             closeImageFullscreen();
             event.preventDefault();
@@ -554,6 +568,7 @@ function addBackButtonHandler() {
     
     // 添加事件监听器
     window.addEventListener('popstate', backButtonHandler);
+    console.log('返回键监听器已添加');
 }
 
 // 移除返回按钮监听器
@@ -561,5 +576,6 @@ function removeBackButtonHandler() {
     if (backButtonHandler) {
         window.removeEventListener('popstate', backButtonHandler);
         backButtonHandler = null;
+        console.log('返回键监听器已移除');
     }
 }

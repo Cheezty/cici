@@ -52,6 +52,9 @@ function setupFullscreenEvents() {
         }
     });
     
+    // 监听浏览器返回按钮（移动端）
+    setupBackButtonHandler();
+    
     // 全屏视频事件 - 每次播放时重新绑定
     // 注意：事件监听器在 playFullscreen 函数中动态添加
 }
@@ -92,6 +95,9 @@ function playFullscreen(videoElement) {
     
     // 记录当前视频
     currentVideo = fullscreenVideo;
+    
+    // 添加返回按钮监听器
+    addBackButtonHandler();
 }
 
 // 关闭全屏
@@ -127,6 +133,9 @@ function closeFullscreen() {
     
     // 隐藏加载状态
     hideFullscreenLoading();
+    
+    // 移除返回按钮监听器
+    removeBackButtonHandler();
     
     currentVideo = null;
 }
@@ -475,6 +484,9 @@ function openImageFullscreen(imageSrc) {
             closeImageFullscreen();
         }
     });
+    
+    // 添加返回按钮监听器
+    addBackButtonHandler();
 }
 
 // 关闭图片全屏
@@ -487,6 +499,9 @@ function closeImageFullscreen() {
     // 隐藏模态框
     modal.classList.remove('active');
     
+    // 移除返回按钮监听器
+    removeBackButtonHandler();
+    
     // 清除图片源
     if (fullscreenImage) {
         fullscreenImage.src = '';
@@ -498,3 +513,53 @@ window.playFullscreen = playFullscreen;
 window.closeFullscreen = closeFullscreen;
 window.openImageFullscreen = openImageFullscreen;
 window.closeImageFullscreen = closeImageFullscreen;
+
+// 返回按钮处理相关变量
+let backButtonHandler = null;
+let isImageFullscreen = false;
+
+// 设置返回按钮处理器
+function setupBackButtonHandler() {
+    // 这个函数在初始化时调用，设置基础监听
+}
+
+// 添加返回按钮监听器
+function addBackButtonHandler() {
+    // 移除之前的监听器（如果存在）
+    removeBackButtonHandler();
+    
+    // 使用 History API 来处理返回按钮
+    // 添加一个历史记录条目
+    const state = { fullscreen: true, timestamp: Date.now() };
+    history.pushState(state, '', window.location.href);
+    
+    // 监听 popstate 事件
+    backButtonHandler = function(event) {
+        // 检查是否有全屏模态框打开
+        const videoModal = document.getElementById('fullscreen-modal');
+        const imageModal = document.getElementById('image-modal');
+        
+        if (videoModal && videoModal.classList.contains('active')) {
+            // 视频全屏打开，关闭视频全屏
+            closeFullscreen();
+            event.preventDefault();
+            return false;
+        } else if (imageModal && imageModal.classList.contains('active')) {
+            // 图片全屏打开，关闭图片全屏
+            closeImageFullscreen();
+            event.preventDefault();
+            return false;
+        }
+    };
+    
+    // 添加事件监听器
+    window.addEventListener('popstate', backButtonHandler);
+}
+
+// 移除返回按钮监听器
+function removeBackButtonHandler() {
+    if (backButtonHandler) {
+        window.removeEventListener('popstate', backButtonHandler);
+        backButtonHandler = null;
+    }
+}

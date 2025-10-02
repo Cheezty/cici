@@ -137,19 +137,15 @@ function closeFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
-    // 延迟清理历史记录，确保非全屏状态下返回键能正常退出网页
-    setTimeout(() => {
-        try {
-            // 如果当前历史记录是我们添加的，移除它
-            if (window.history && window.history.state && window.history.state.fullscreen) {
-                console.log('清理全屏历史记录');
-                // 移除我们添加的历史记录
-                window.history.back();
-            }
-        } catch (e) {
-            console.log('清理历史记录失败:', e);
+    // 简单清理历史记录
+    try {
+        if (window.history && window.history.state && window.history.state.fullscreen) {
+            console.log('清理全屏历史记录');
+            window.history.back();
         }
-    }, 100);
+    } catch (e) {
+        console.log('清理历史记录失败:', e);
+    }
     
     currentVideo = null;
 }
@@ -516,19 +512,15 @@ function closeImageFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
-    // 延迟清理历史记录，确保非全屏状态下返回键能正常退出网页
-    setTimeout(() => {
-        try {
-            // 如果当前历史记录是我们添加的，移除它
-            if (window.history && window.history.state && window.history.state.fullscreen) {
-                console.log('清理全屏历史记录');
-                // 移除我们添加的历史记录
-                window.history.back();
-            }
-        } catch (e) {
-            console.log('清理历史记录失败:', e);
+    // 简单清理历史记录
+    try {
+        if (window.history && window.history.state && window.history.state.fullscreen) {
+            console.log('清理全屏历史记录');
+            window.history.back();
         }
-    }, 100);
+    } catch (e) {
+        console.log('清理历史记录失败:', e);
+    }
     
     // 清除图片源
     if (fullscreenImage) {
@@ -574,38 +566,31 @@ function addBackButtonHandler() {
     
     // 监听 popstate 事件
     backButtonHandler = function(event) {
-        console.log('返回键被按下，当前状态:', window.history.state);
+        console.log('返回键被按下');
         
         // 检查是否有全屏模态框打开
         const videoModal = document.getElementById('fullscreen-modal');
         const imageModal = document.getElementById('image-modal');
         
-        const isVideoFullscreen = videoModal && videoModal.classList.contains('active');
-        const isImageFullscreen = imageModal && imageModal.classList.contains('active');
-        
-        console.log('视频全屏状态:', isVideoFullscreen);
-        console.log('图片全屏状态:', isImageFullscreen);
-        
-        if (isVideoFullscreen) {
-            console.log('全屏视频打开，关闭视频全屏');
-            // 相当于点击关闭按钮
+        if (videoModal && videoModal.classList.contains('active')) {
+            console.log('全屏视频打开，直接调用关闭函数');
+            // 直接调用关闭函数，就像点击叉一样
             closeFullscreen();
-            // 阻止默认行为，不退出网页
+            // 阻止默认行为
             event.preventDefault();
             event.stopPropagation();
             return false;
-        } else if (isImageFullscreen) {
-            console.log('全屏图片打开，关闭图片全屏');
-            // 相当于点击关闭按钮
+        } else if (imageModal && imageModal.classList.contains('active')) {
+            console.log('全屏图片打开，直接调用关闭函数');
+            // 直接调用关闭函数，就像点击叉一样
             closeImageFullscreen();
-            // 阻止默认行为，不退出网页
+            // 阻止默认行为
             event.preventDefault();
             event.stopPropagation();
             return false;
         } else {
             console.log('没有全屏模态框，允许正常退出网页');
             // 没有全屏模态框，允许正常退出网页
-            // 不调用preventDefault()，让浏览器正常处理
         }
     };
     

@@ -578,13 +578,28 @@ function addBackButtonHandler() {
         return;
     }
     
-    // 统一策略：只添加一层历史记录
-    try {
-        history.pushState({ fullscreen: true }, '', window.location.href);
-        console.log('已添加全屏历史记录哨兵');
-    } catch (e) {
-        console.log('添加历史记录失败:', e);
-        return;
+    // 针对微信浏览器使用特殊策略
+    if (browser === 'wechat') {
+        // 微信浏览器：使用多层历史记录防止退出
+        try {
+            history.pushState({ fullscreen: true, step: 1 }, '', window.location.href);
+            history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
+            history.pushState({ fullscreen: true, step: 3 }, '', window.location.href);
+            history.pushState({ fullscreen: true, step: 4 }, '', window.location.href);
+            console.log('微信浏览器：已添加四重历史记录哨兵');
+        } catch (e) {
+            console.log('添加历史记录失败:', e);
+            return;
+        }
+    } else {
+        // 其他浏览器：使用单层历史记录
+        try {
+            history.pushState({ fullscreen: true }, '', window.location.href);
+            console.log('其他浏览器：已添加全屏历史记录哨兵');
+        } catch (e) {
+            console.log('添加历史记录失败:', e);
+            return;
+        }
     }
     
     // 监听 popstate 事件
@@ -608,8 +623,20 @@ function addBackButtonHandler() {
                 closeImageFullscreen();
             }
             
-            // 不重新添加历史记录，让下次返回正常退出网页
-            console.log('全屏已关闭，下次返回将退出网页');
+            // 微信浏览器：立即重新添加多层历史记录
+            if (browser === 'wechat') {
+                setTimeout(() => {
+                    try {
+                        history.pushState({ fullscreen: true, step: 1 }, '', window.location.href);
+                        history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
+                        history.pushState({ fullscreen: true, step: 3 }, '', window.location.href);
+                        history.pushState({ fullscreen: true, step: 4 }, '', window.location.href);
+                        console.log('微信浏览器：重新添加四重拦截层');
+                    } catch (e) {
+                        console.log('重新添加历史记录失败:', e);
+                    }
+                }, 10);
+            }
             
             return false;
         } else {

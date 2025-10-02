@@ -1,24 +1,14 @@
 // 全局变量
 let currentVideo = null;
 let isFullscreen = false;
-let isWeChatBrowser = false; // 微信浏览器标识
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
-    // 基础哨兵：确保非全屏时返回键为正常返回（非微信浏览器）
-    if (!isWeChatBrowser) {
-        try {
-            if (window.history && window.history.replaceState) {
-                history.replaceState({ base: true }, '', window.location.href);
-            }
-        } catch (_) {}
-    }
 });
 
 // 初始化应用
 function initializeApp() {
-    detectWeChatBrowser(); // 检测微信浏览器
     setupVideoEvents();
     setupFullscreenEvents();
     setupLazyLoading();  // 替换preloadVideos为懒加载
@@ -62,7 +52,8 @@ function setupFullscreenEvents() {
         }
     });
     
-    // 初始化完成
+    // 监听浏览器返回按钮（移动端）
+    setupBackButtonHandler();
     
     // 全屏视频事件 - 每次播放时重新绑定
     // 注意：事件监听器在 playFullscreen 函数中动态添加
@@ -105,22 +96,14 @@ function playFullscreen(videoElement) {
     // 记录当前视频
     currentVideo = fullscreenVideo;
     
-    // 设置返回键拦截（非微信浏览器）
-    if (!isWeChatBrowser) {
-        setupBackButton();
-    } else {
-        // 微信浏览器：在进入全屏时添加历史记录
-        history.pushState({ fullscreen: true }, '', window.location.href);
-        console.log('微信浏览器：已添加全屏历史记录');
-    }
+    // 添加返回按钮监听器
+    addBackButtonHandler();
 }
 
 // 关闭全屏
 function closeFullscreen() {
     const modal = document.getElementById('fullscreen-modal');
     const fullscreenVideo = document.getElementById('fullscreen-video');
-    
-    console.log('开始关闭全屏视频');
     
     // 先设置标志，避免错误处理函数执行
     isFullscreen = false;
@@ -151,14 +134,10 @@ function closeFullscreen() {
     // 隐藏加载状态
     hideFullscreenLoading();
     
-    // 移除返回键拦截（非微信浏览器）
-    if (!isWeChatBrowser) {
-        removeBackButton();
-    }
+    // 移除返回按钮监听器
+    removeBackButtonHandler();
     
     currentVideo = null;
-    
-    console.log('全屏视频已关闭');
 }
 
 // 显示加载状态
@@ -506,14 +485,8 @@ function openImageFullscreen(imageSrc) {
         }
     });
     
-    // 设置返回键拦截（非微信浏览器）
-    if (!isWeChatBrowser) {
-        setupBackButton();
-    } else {
-        // 微信浏览器：在进入全屏时添加历史记录
-        history.pushState({ fullscreen: true }, '', window.location.href);
-        console.log('微信浏览器：已添加全屏历史记录');
-    }
+    // 添加返回按钮监听器
+    addBackButtonHandler();
 }
 
 // 关闭图片全屏
@@ -521,24 +494,18 @@ function closeImageFullscreen() {
     const modal = document.getElementById('image-modal');
     const fullscreenImage = document.getElementById('fullscreen-image');
     
-    console.log('开始关闭全屏图片');
-    
     if (!modal) return;
     
     // 隐藏模态框
     modal.classList.remove('active');
     
-    // 移除返回键拦截（非微信浏览器）
-    if (!isWeChatBrowser) {
-        removeBackButton();
-    }
+    // 移除返回按钮监听器
+    removeBackButtonHandler();
     
     // 清除图片源
     if (fullscreenImage) {
         fullscreenImage.src = '';
     }
-    
-    console.log('全屏图片已关闭');
 }
 
 // 导出函数供全局使用
@@ -547,160 +514,68 @@ window.closeFullscreen = closeFullscreen;
 window.openImageFullscreen = openImageFullscreen;
 window.closeImageFullscreen = closeImageFullscreen;
 
-// 微信浏览器检测
-function detectWeChatBrowser() {
-    const ua = navigator.userAgent.toLowerCase();
-    isWeChatBrowser = ua.includes('micromessenger');
-    console.log('微信浏览器检测结果:', isWeChatBrowser);
-    
-    if (isWeChatBrowser) {
-        console.log('检测到微信浏览器，启用用户体验优化');
-        // 微信浏览器需要特殊处理
-        setupWeChatUserExperience();
-    }
-}
-
-// 微信浏览器用户体验优化
-function setupWeChatUserExperience() {
-    console.log('微信浏览器：设置简单返回键处理');
-    
-    // 微信浏览器特殊处理：页面加载时添加基础历史记录
-    try {
-        history.replaceState({ wechatBase: true, timestamp: Date.now() }, '', window.location.href);
-        console.log('微信浏览器：已添加基础历史记录');
-    } catch (e) {
-        console.log('微信浏览器：添加基础历史记录失败', e);
-    }
-    
-    // 设置简单的返回键处理
-    setupSimpleBackButtonHandler();
-}
-
-// 简单返回键处理（微信浏览器专用）
-function setupSimpleBackButtonHandler() {
-    console.log('设置简单返回键处理');
-    
-    // 监听返回键事件
-    window.addEventListener('popstate', function(event) {
-        console.log('返回键被触发');
-        
-        // 检查视频全屏状态
-        const videoModal = document.getElementById('fullscreen-modal');
-        if (videoModal && videoModal.classList.contains('active')) {
-            console.log('关闭视频全屏');
-            closeFullscreen();
-            // 立即重新添加历史记录
-            setTimeout(() => {
-                history.pushState({ fullscreen: true }, '', window.location.href);
-            }, 10);
-            return;
-        }
-        
-        // 检查图片全屏状态
-        const imageModal = document.getElementById('image-modal');
-        if (imageModal && imageModal.classList.contains('active')) {
-            console.log('关闭图片全屏');
-            closeImageFullscreen();
-            // 立即重新添加历史记录
-            setTimeout(() => {
-                history.pushState({ fullscreen: true }, '', window.location.href);
-            }, 10);
-            return;
-        }
-        
-        console.log('没有全屏状态，允许正常返回');
-    });
-}
-
-// 返回键处理 - 优化版本
+// 返回按钮处理相关变量
 let backButtonHandler = null;
-let isBackButtonActive = false;
+let isImageFullscreen = false;
 
-// 设置返回键拦截
-function setupBackButton() {
-    // 微信浏览器使用特殊处理，不需要这个函数
-    if (isWeChatBrowser) {
-        console.log('微信浏览器环境，跳过标准返回键拦截');
+// 设置返回按钮处理器
+function setupBackButtonHandler() {
+    // 这个函数在初始化时调用，设置基础监听
+}
+
+// 添加返回按钮监听器
+function addBackButtonHandler() {
+    // 移除之前的监听器（如果存在）
+    removeBackButtonHandler();
+    
+    // 检查浏览器是否支持History API
+    if (!window.history || !window.history.pushState) {
+        console.log('浏览器不支持History API，跳过返回键处理');
         return;
     }
     
-    // 如果已经激活，直接返回
-    if (isBackButtonActive) {
+    // 使用 History API 来处理返回按钮
+    // 添加一个历史记录条目
+    const state = { fullscreen: true, timestamp: Date.now() };
+    try {
+        history.pushState(state, '', window.location.href);
+    } catch (e) {
+        console.log('添加历史记录失败:', e);
         return;
     }
     
-    // 移除之前的监听器（安全措施）
-    if (backButtonHandler) {
-        window.removeEventListener('popstate', backButtonHandler);
-    }
-    
-    // 添加历史记录，标记全屏状态
-    history.pushState({ fullscreen: true, timestamp: Date.now() }, '', window.location.href);
-    
-    // 创建返回键处理函数
+    // 监听 popstate 事件
     backButtonHandler = function(event) {
-        console.log('返回键被触发，当前状态:', {
-            videoModal: document.getElementById('fullscreen-modal')?.classList.contains('active'),
-            imageModal: document.getElementById('image-modal')?.classList.contains('active'),
-            isFullscreen: isFullscreen
-        });
-        
-        // 检查视频全屏状态
+        console.log('返回键被按下');
+        // 检查是否有全屏模态框打开
         const videoModal = document.getElementById('fullscreen-modal');
+        const imageModal = document.getElementById('image-modal');
+        
         if (videoModal && videoModal.classList.contains('active')) {
             console.log('关闭视频全屏');
+            // 视频全屏打开，关闭视频全屏
             closeFullscreen();
-            // 阻止默认的返回行为
             event.preventDefault();
             return false;
-        }
-        
-        // 检查图片全屏状态
-        const imageModal = document.getElementById('image-modal');
-        if (imageModal && imageModal.classList.contains('active')) {
+        } else if (imageModal && imageModal.classList.contains('active')) {
             console.log('关闭图片全屏');
+            // 图片全屏打开，关闭图片全屏
             closeImageFullscreen();
-            // 阻止默认的返回行为
             event.preventDefault();
             return false;
         }
-        
-        // 如果没有全屏状态，允许正常返回
-        console.log('没有全屏状态，允许正常返回');
     };
     
     // 添加事件监听器
     window.addEventListener('popstate', backButtonHandler);
-    isBackButtonActive = true;
-    
-    console.log('返回键拦截已激活');
+    console.log('返回键监听器已添加');
 }
 
-// 移除返回键拦截
-function removeBackButton() {
-    // 微信浏览器使用特殊处理，不需要这个函数
-    if (isWeChatBrowser) {
-        console.log('微信浏览器环境，跳过标准返回键拦截移除');
-        return;
-    }
-    
-    // 移除事件监听器
+// 移除返回按钮监听器
+function removeBackButtonHandler() {
     if (backButtonHandler) {
         window.removeEventListener('popstate', backButtonHandler);
         backButtonHandler = null;
+        console.log('返回键监听器已移除');
     }
-    
-    // 重置状态
-    isBackButtonActive = false;
-    
-    // 清理历史记录，恢复到基础状态
-    try {
-        history.replaceState({ base: true, timestamp: Date.now() }, '', window.location.href);
-    } catch (e) {
-        console.log('清理历史记录时出现错误:', e);
-    }
-    
-    console.log('返回键拦截已移除');
 }
-
-// 简单方案：移除复杂的微信浏览器样式和提示

@@ -137,10 +137,11 @@ function closeFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
-    // 清理历史记录
+    // 清理历史记录，确保非全屏状态下返回键能正常退出网页
     try {
         // 如果当前历史记录是我们添加的，移除它
         if (window.history && window.history.state && window.history.state.fullscreen) {
+            // 移除我们添加的历史记录
             window.history.back();
         }
     } catch (e) {
@@ -512,10 +513,11 @@ function closeImageFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
-    // 清理历史记录
+    // 清理历史记录，确保非全屏状态下返回键能正常退出网页
     try {
         // 如果当前历史记录是我们添加的，移除它
         if (window.history && window.history.state && window.history.state.fullscreen) {
+            // 移除我们添加的历史记录
             window.history.back();
         }
     } catch (e) {
@@ -554,11 +556,9 @@ function addBackButtonHandler() {
         return;
     }
     
-    // 使用 History API 来处理返回按钮
-    // 添加一个历史记录条目
+    // 添加一个历史记录条目，用于拦截返回键
     const state = { fullscreen: true, timestamp: Date.now() };
     try {
-        // 使用pushState添加历史记录
         history.pushState(state, '', window.location.href);
     } catch (e) {
         console.log('添加历史记录失败:', e);
@@ -568,26 +568,29 @@ function addBackButtonHandler() {
     // 监听 popstate 事件
     backButtonHandler = function(event) {
         console.log('返回键被按下');
+        
         // 检查是否有全屏模态框打开
         const videoModal = document.getElementById('fullscreen-modal');
         const imageModal = document.getElementById('image-modal');
         
         if (videoModal && videoModal.classList.contains('active')) {
-            console.log('关闭视频全屏');
-            // 视频全屏打开，关闭视频全屏
+            console.log('全屏视频打开，关闭视频全屏');
+            // 相当于点击关闭按钮
             closeFullscreen();
+            // 阻止默认行为，不退出网页
             event.preventDefault();
             return false;
         } else if (imageModal && imageModal.classList.contains('active')) {
-            console.log('关闭图片全屏');
-            // 图片全屏打开，关闭图片全屏
+            console.log('全屏图片打开，关闭图片全屏');
+            // 相当于点击关闭按钮
             closeImageFullscreen();
+            // 阻止默认行为，不退出网页
             event.preventDefault();
             return false;
         } else {
-            // 没有全屏模态框打开，允许正常返回
-            console.log('没有全屏模态框，允许正常返回');
-            // 不阻止默认行为，让浏览器正常处理返回
+            console.log('没有全屏模态框，允许正常退出网页');
+            // 没有全屏模态框，允许正常退出网页
+            // 不调用preventDefault()，让浏览器正常处理
         }
     };
     

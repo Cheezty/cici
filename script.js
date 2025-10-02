@@ -143,11 +143,11 @@ function closeFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
-    // 简单清理：直接替换为基础状态
+    // 简单清理历史记录
     try {
         if (window.history && window.history.replaceState) {
             history.replaceState({ base: true }, '', window.location.href);
-            console.log('已清理全屏历史记录，恢复基础状态');
+            console.log('已清理全屏历史记录');
         }
     } catch (e) {
         console.log('清理历史记录失败:', e);
@@ -518,11 +518,11 @@ function closeImageFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
-    // 简单清理：直接替换为基础状态
+    // 简单清理历史记录
     try {
         if (window.history && window.history.replaceState) {
             history.replaceState({ base: true }, '', window.location.href);
-            console.log('已清理全屏历史记录，恢复基础状态');
+            console.log('已清理全屏历史记录');
         }
     } catch (e) {
         console.log('清理历史记录失败:', e);
@@ -569,93 +569,39 @@ function addBackButtonHandler() {
     // 移除之前的监听器（如果存在）
     removeBackButtonHandler();
     
-    const browser = detectBrowser();
-    console.log('检测到浏览器:', browser);
-    
     // 检查浏览器是否支持History API
     if (!window.history || !window.history.pushState) {
         console.log('浏览器不支持History API，跳过返回键处理');
         return;
     }
     
-    // 针对微信浏览器使用最激进的策略
-    if (browser === 'wechat') {
-        // 微信浏览器：使用大量历史记录 + beforeunload 拦截
-        try {
-            // 添加大量历史记录
-            for (let i = 1; i <= 10; i++) {
-                history.pushState({ fullscreen: true, step: i }, '', window.location.href);
-            }
-            console.log('微信浏览器：已添加十重历史记录哨兵');
-            
-            // 添加页面离开拦截
-            window.addEventListener('beforeunload', function(e) {
-                const videoModal = document.getElementById('fullscreen-modal');
-                const imageModal = document.getElementById('image-modal');
-                
-                if ((videoModal && videoModal.classList.contains('active')) || 
-                    (imageModal && imageModal.classList.contains('active'))) {
-                    console.log('微信浏览器：拦截页面离开');
-                    e.preventDefault();
-                    e.returnValue = '';
-                    return '';
-                }
-            });
-            
-        } catch (e) {
-            console.log('添加历史记录失败:', e);
-            return;
-        }
-    } else {
-        // 其他浏览器：使用单层历史记录
-        try {
-            history.pushState({ fullscreen: true }, '', window.location.href);
-            console.log('其他浏览器：已添加全屏历史记录哨兵');
-        } catch (e) {
-            console.log('添加历史记录失败:', e);
-            return;
-        }
+    // 最简单的方式：添加一个历史记录
+    try {
+        history.pushState({ fullscreen: true }, '', window.location.href);
+        console.log('已添加全屏历史记录');
+    } catch (e) {
+        console.log('添加历史记录失败:', e);
+        return;
     }
     
     // 监听 popstate 事件
     backButtonHandler = function(event) {
-        console.log('返回键被按下，当前状态:', window.history.state);
+        console.log('返回键被按下');
         
         // 检查是否有全屏模态框打开
         const videoModal = document.getElementById('fullscreen-modal');
         const imageModal = document.getElementById('image-modal');
         
-        const isVideoActive = videoModal && videoModal.classList.contains('active');
-        const isImageActive = imageModal && imageModal.classList.contains('active');
-        
-        if (isVideoActive || isImageActive) {
-            console.log('全屏模态框打开，关闭全屏');
-            
-            // 关闭对应的全屏
-            if (isVideoActive) {
-                closeFullscreen();
-            } else if (isImageActive) {
-                closeImageFullscreen();
-            }
-            
-            // 微信浏览器：立即重新添加大量历史记录
-            if (browser === 'wechat') {
-                setTimeout(() => {
-                    try {
-                        for (let i = 1; i <= 10; i++) {
-                            history.pushState({ fullscreen: true, step: i }, '', window.location.href);
-                        }
-                        console.log('微信浏览器：重新添加十重拦截层');
-                    } catch (e) {
-                        console.log('重新添加历史记录失败:', e);
-                    }
-                }, 10);
-            }
-            
+        if (videoModal && videoModal.classList.contains('active')) {
+            console.log('关闭视频全屏');
+            closeFullscreen();
+            return false;
+        } else if (imageModal && imageModal.classList.contains('active')) {
+            console.log('关闭图片全屏');
+            closeImageFullscreen();
             return false;
         } else {
-            console.log('没有全屏模态框，允许正常退出网页');
-            // 不阻止，让浏览器正常处理
+            console.log('没有全屏，允许退出');
         }
     };
     
@@ -670,16 +616,5 @@ function removeBackButtonHandler() {
         window.removeEventListener('popstate', backButtonHandler);
         backButtonHandler = null;
         console.log('返回键监听器已移除');
-    }
-    
-    // 移除 beforeunload 监听器（微信浏览器）
-    const browser = detectBrowser();
-    if (browser === 'wechat') {
-        window.removeEventListener('beforeunload', function(e) {
-            e.preventDefault();
-            e.returnValue = '';
-            return '';
-        });
-        console.log('微信浏览器：已移除页面离开拦截');
     }
 }

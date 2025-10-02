@@ -1,4 +1,4 @@
-//0930版本再上传
+//0930版本修改版
 // 全局变量
 let currentVideo = null;
 let isFullscreen = false;
@@ -6,6 +6,17 @@ let isFullscreen = false;
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
+    
+    // 微信浏览器特殊处理：页面加载时添加基础历史记录
+    const isWeChat = /micromessenger/i.test(navigator.userAgent);
+    if (isWeChat) {
+        try {
+            history.replaceState({ base: true, timestamp: Date.now() }, '', window.location.href);
+            console.log('微信浏览器：已添加基础历史记录');
+        } catch (e) {
+            console.log('微信浏览器：添加基础历史记录失败', e);
+        }
+    }
 });
 
 // 初始化应用
@@ -535,11 +546,16 @@ function addBackButtonHandler() {
         return;
     }
     
+    // 检测微信浏览器
+    const isWeChat = /micromessenger/i.test(navigator.userAgent);
+    console.log('检测到微信浏览器:', isWeChat);
+    
     // 使用 History API 来处理返回按钮
     // 添加一个历史记录条目
     const state = { fullscreen: true, timestamp: Date.now() };
     try {
         history.pushState(state, '', window.location.href);
+        console.log('历史记录已添加');
     } catch (e) {
         console.log('添加历史记录失败:', e);
         return;
@@ -547,7 +563,8 @@ function addBackButtonHandler() {
     
     // 监听 popstate 事件
     backButtonHandler = function(event) {
-        console.log('返回键被按下');
+        console.log('返回键被按下，事件详情:', event);
+        
         // 检查是否有全屏模态框打开
         const videoModal = document.getElementById('fullscreen-modal');
         const imageModal = document.getElementById('image-modal');
@@ -556,15 +573,43 @@ function addBackButtonHandler() {
             console.log('关闭视频全屏');
             // 视频全屏打开，关闭视频全屏
             closeFullscreen();
+            
+            // 微信浏览器特殊处理：立即重新添加历史记录
+            if (isWeChat) {
+                setTimeout(() => {
+                    try {
+                        history.pushState({ fullscreen: true, timestamp: Date.now() }, '', window.location.href);
+                        console.log('微信浏览器：重新添加历史记录');
+                    } catch (e) {
+                        console.log('重新添加历史记录失败:', e);
+                    }
+                }, 10);
+            }
+            
             event.preventDefault();
             return false;
         } else if (imageModal && imageModal.classList.contains('active')) {
             console.log('关闭图片全屏');
             // 图片全屏打开，关闭图片全屏
             closeImageFullscreen();
+            
+            // 微信浏览器特殊处理：立即重新添加历史记录
+            if (isWeChat) {
+                setTimeout(() => {
+                    try {
+                        history.pushState({ fullscreen: true, timestamp: Date.now() }, '', window.location.href);
+                        console.log('微信浏览器：重新添加历史记录');
+                    } catch (e) {
+                        console.log('重新添加历史记录失败:', e);
+                    }
+                }, 10);
+            }
+            
             event.preventDefault();
             return false;
         }
+        
+        console.log('没有全屏状态，允许正常返回');
     };
     
     // 添加事件监听器

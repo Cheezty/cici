@@ -1,38 +1,36 @@
-//0930版本修改版
+// 全屏视频和图片控制 - 微信返回键优化版
 // 全局变量
 let currentVideo = null;
 let isFullscreen = false;
+let backButtonHandler = null;
+let isBackButtonEnabled = false;
+let historyStateAdded = false;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM加载完成，初始化应用');
     initializeApp();
-    
-    // 微信浏览器特殊处理：页面加载时添加基础历史记录
-    const isWeChat = /micromessenger/i.test(navigator.userAgent);
-    if (isWeChat) {
-        try {
-            history.replaceState({ base: true, timestamp: Date.now() }, '', window.location.href);
-            console.log('微信浏览器：已添加基础历史记录');
-        } catch (e) {
-            console.log('微信浏览器：添加基础历史记录失败', e);
-        }
-    }
 });
 
 // 初始化应用
 function initializeApp() {
+    console.log('开始初始化应用');
     setupVideoEvents();
     setupFullscreenEvents();
-    setupLazyLoading();  // 替换preloadVideos为懒加载
+    setupLazyLoading();
     setupResponsiveHandlers();
-    preloadCriticalImages();  // 预加载关键图片
+    preloadCriticalImages();
+    console.log('应用初始化完成');
 }
 
 // 设置视频事件监听
 function setupVideoEvents() {
     const videos = document.querySelectorAll('video');
+    console.log('找到视频数量:', videos.length);
     
-    videos.forEach(video => {
+    videos.forEach((video, index) => {
+        console.log(`设置视频 ${index} 事件监听`);
+        
         // 视频加载事件
         video.addEventListener('loadstart', showLoading);
         video.addEventListener('loadeddata', hideLoading);
@@ -42,17 +40,41 @@ function setupVideoEvents() {
         video.addEventListener('play', onVideoPlay);
         video.addEventListener('pause', onVideoPause);
         video.addEventListener('ended', onVideoEnd);
+        
+        // 添加点击事件用于全屏播放
+        video.addEventListener('click', function() {
+            console.log('视频被点击，准备全屏播放');
+            playFullscreen(video);
+        });
+        
+        // 添加触摸反馈
+        video.style.transition = 'transform 0.2s ease';
+        video.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.98)';
+        });
+        
+        video.addEventListener('touchend', function() {
+            this.style.transform = 'scale(1)';
+        });
     });
 }
 
 // 设置全屏事件监听
 function setupFullscreenEvents() {
+    console.log('设置全屏事件监听');
+    
     const modal = document.getElementById('fullscreen-modal');
     const fullscreenVideo = document.getElementById('fullscreen-video');
+    
+    if (!modal) {
+        console.error('未找到全屏模态框元素');
+        return;
+    }
     
     // 点击背景关闭
     modal.addEventListener('click', function(e) {
         if (e.target === modal) {
+            console.log('点击背景关闭全屏');
             closeFullscreen();
         }
     });
@@ -60,37 +82,50 @@ function setupFullscreenEvents() {
     // ESC键关闭
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && isFullscreen) {
+            console.log('ESC键关闭全屏');
             closeFullscreen();
         }
     });
     
-    // 监听浏览器返回按钮（移动端）
-    setupBackButtonHandler();
-    
-    // 全屏视频事件 - 每次播放时重新绑定
-    // 注意：事件监听器在 playFullscreen 函数中动态添加
+    // 全屏视频事件
+    if (fullscreenVideo) {
+        fullscreenVideo.addEventListener('ended', function() {
+            console.log('全屏视频播放结束');
+            setTimeout(() => {
+                closeFullscreen();
+            }, 1000);
+        });
+    }
 }
 
 // 全屏播放视频
 function playFullscreen(videoElement) {
-    if (!videoElement) return;
+    if (!videoElement) {
+        console.error('视频元素不存在');
+        return;
+    }
+    
+    console.log('开始全屏播放视频');
     
     const modal = document.getElementById('fullscreen-modal');
     const fullscreenVideo = document.getElementById('fullscreen-video');
     
+    if (!modal || !fullscreenVideo) {
+        console.error('全屏元素未找到');
+        return;
+    }
+    
     // 设置视频源
     const source = videoElement.querySelector('source');
     if (source) {
-        fullscreenVideo.src = source.src;
-        fullscreenVideo.type = source.type;
+        fullscreenVideo.innerHTML = '';
+        const newSource = document.createElement('source');
+        newSource.src = source.src;
+        newSource.type = source.type;
+        fullscreenVideo.appendChild(newSource);
     } else {
         fullscreenVideo.src = videoElement.src;
     }
-    
-    // 重新绑定事件监听器
-    fullscreenVideo.addEventListener('loadstart', showFullscreenLoading);
-    fullscreenVideo.addEventListener('loadeddata', hideFullscreenLoading);
-    fullscreenVideo.addEventListener('error', handleFullscreenVideoError);
     
     // 显示模态框
     modal.classList.add('active');
@@ -100,43 +135,55 @@ function playFullscreen(videoElement) {
     showFullscreenLoading();
     
     // 尝试播放
-    fullscreenVideo.play().catch(error => {
-        console.log('自动播放被阻止:', error);
-        hideFullscreenLoading();
-    });
+    const playPromise = fullscreenVideo.play();
+    
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            console.log('全屏视频开始播放');
+            hideFullscreenLoading();
+        }).catch(error => {
+            console.log('自动播放被阻止:', error);
+            hideFullscreenLoading();
+            // 显示播放按钮让用户手动点击
+        });
+    }
     
     // 记录当前视频
     currentVideo = fullscreenVideo;
     
-    // 添加返回按钮监听器
-    addBackButtonHandler();
+    // 启用返回键处理
+    enableBackButtonHandler();
+    
+    console.log('全屏播放设置完成');
 }
 
 // 关闭全屏
 function closeFullscreen() {
+    console.log('开始关闭全屏');
+    
     const modal = document.getElementById('fullscreen-modal');
     const fullscreenVideo = document.getElementById('fullscreen-video');
     
-    // 先设置标志，避免错误处理函数执行
+    if (!modal) {
+        console.error('全屏模态框未找到');
+        return;
+    }
+    
+    // 先设置标志
     isFullscreen = false;
     
     // 暂停视频
     if (fullscreenVideo) {
+        console.log('暂停全屏视频');
         fullscreenVideo.pause();
         fullscreenVideo.currentTime = 0;
         
-        // 移除所有事件监听器，避免触发错误事件
-        fullscreenVideo.removeEventListener('error', handleFullscreenVideoError);
-        fullscreenVideo.removeEventListener('loadstart', showFullscreenLoading);
-        fullscreenVideo.removeEventListener('loadeddata', hideFullscreenLoading);
-        
-        // 清除视频源 - 使用更安全的方式，避免触发错误事件
+        // 清除视频源
         try {
-            // 先移除src属性，避免触发error事件
             fullscreenVideo.removeAttribute('src');
-            fullscreenVideo.load(); // 重新加载以清除状态
+            fullscreenVideo.load();
         } catch (e) {
-            console.log('清除视频源时出现错误:', e);
+            console.log('清除视频源时出错:', e);
         }
     }
     
@@ -146,67 +193,256 @@ function closeFullscreen() {
     // 隐藏加载状态
     hideFullscreenLoading();
     
-    // 移除返回按钮监听器
-    removeBackButtonHandler();
+    // 禁用返回键处理
+    disableBackButtonHandler();
     
     currentVideo = null;
+    
+    console.log('全屏关闭完成');
 }
 
-// 显示加载状态
+// 启用返回键处理
+function enableBackButtonHandler() {
+    if (isBackButtonEnabled) {
+        console.log('返回键处理已启用，跳过');
+        return;
+    }
+    
+    console.log('启用返回键处理');
+    isBackButtonEnabled = true;
+    
+    // 方法1: 使用 history.pushState 添加历史记录
+    try {
+        if (window.history && window.history.pushState) {
+            // 添加一个历史记录条目
+            history.pushState({
+                fullscreen: true,
+                timestamp: Date.now(),
+                type: 'fullscreen-video'
+            }, '', window.location.href);
+            
+            historyStateAdded = true;
+            console.log('历史记录条目添加成功');
+        }
+    } catch (e) {
+        console.warn('添加历史记录失败:', e);
+    }
+    
+    // 方法2: 监听 popstate 事件
+    backButtonHandler = function(event) {
+        console.log('返回键被按下，当前全屏状态:', isFullscreen);
+        console.log('事件详情:', event);
+        
+        const videoModal = document.getElementById('fullscreen-modal');
+        const imageModal = document.getElementById('image-modal');
+        
+        let shouldPreventDefault = false;
+        
+        // 检查视频全屏
+        if (videoModal && videoModal.classList.contains('active')) {
+            console.log('检测到视频全屏打开，关闭视频全屏');
+            closeFullscreen();
+            shouldPreventDefault = true;
+        }
+        // 检查图片全屏
+        else if (imageModal && imageModal.classList.contains('active')) {
+            console.log('检测到图片全屏打开，关闭图片全屏');
+            closeImageFullscreen();
+            shouldPreventDefault = true;
+        }
+        
+        // 如果处理了全屏关闭，阻止默认返回行为
+        if (shouldPreventDefault) {
+            console.log('阻止默认返回行为');
+            
+            // 再次 pushState 来保持当前页面
+            try {
+                if (window.history && window.history.pushState) {
+                    setTimeout(() => {
+                        history.pushState({
+                            fullscreen: false,
+                            timestamp: Date.now()
+                        }, '', window.location.href);
+                    }, 10);
+                }
+            } catch (e) {
+                console.warn('再次添加历史记录失败:', e);
+            }
+            
+            if (event && event.preventDefault) {
+                event.preventDefault();
+            }
+            
+            // 对于微信浏览器，可能需要额外的处理
+            if (window.WeixinJSBridge) {
+                console.log('检测到微信环境，使用微信特定处理');
+                // 微信环境下的特殊处理
+            }
+            
+            return false;
+        }
+    };
+    
+    // 添加事件监听
+    window.addEventListener('popstate', backButtonHandler);
+    console.log('popstate 事件监听器已添加');
+}
+
+// 禁用返回键处理
+function disableBackButtonHandler() {
+    if (!isBackButtonEnabled) {
+        return;
+    }
+    
+    console.log('禁用返回键处理');
+    isBackButtonEnabled = false;
+    
+    // 移除事件监听
+    if (backButtonHandler) {
+        window.removeEventListener('popstate', backButtonHandler);
+        backButtonHandler = null;
+        console.log('popstate 事件监听器已移除');
+    }
+    
+    // 如果添加了历史记录，尝试返回
+    if (historyStateAdded) {
+        try {
+            if (window.history && window.history.state && window.history.state.fullscreen) {
+                console.log('返回历史记录');
+                history.back();
+            }
+        } catch (e) {
+            console.warn('返回历史记录失败:', e);
+        }
+        historyStateAdded = false;
+    }
+}
+
+// 图片全屏功能
+function openImageFullscreen(imageSrc) {
+    console.log('打开图片全屏:', imageSrc);
+    
+    const modal = document.getElementById('image-modal');
+    const fullscreenImage = document.getElementById('fullscreen-image');
+    
+    if (!modal || !fullscreenImage) {
+        console.error('图片全屏元素未找到');
+        return;
+    }
+    
+    // 设置图片源
+    fullscreenImage.src = imageSrc;
+    
+    // 显示模态框
+    modal.classList.add('active');
+    
+    // 添加点击背景关闭功能
+    const clickHandler = function(e) {
+        if (e.target === modal) {
+            console.log('点击背景关闭图片全屏');
+            closeImageFullscreen();
+        }
+    };
+    
+    // 移除旧的事件监听器，添加新的
+    modal.removeEventListener('click', clickHandler);
+    modal.addEventListener('click', clickHandler);
+    
+    // ESC键关闭
+    const keyHandler = function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            console.log('ESC键关闭图片全屏');
+            closeImageFullscreen();
+        }
+    };
+    
+    document.removeEventListener('keydown', keyHandler);
+    document.addEventListener('keydown', keyHandler);
+    
+    // 启用返回键处理
+    enableBackButtonHandler();
+    
+    console.log('图片全屏打开完成');
+}
+
+// 关闭图片全屏
+function closeImageFullscreen() {
+    console.log('关闭图片全屏');
+    
+    const modal = document.getElementById('image-modal');
+    const fullscreenImage = document.getElementById('fullscreen-image');
+    
+    if (!modal) {
+        console.error('图片模态框未找到');
+        return;
+    }
+    
+    // 隐藏模态框
+    modal.classList.remove('active');
+    
+    // 禁用返回键处理
+    disableBackButtonHandler();
+    
+    // 清除图片源
+    if (fullscreenImage) {
+        setTimeout(() => {
+            fullscreenImage.src = '';
+        }, 300);
+    }
+    
+    console.log('图片全屏关闭完成');
+}
+
+// 加载状态管理
 function showLoading() {
-    // 可以在这里添加全局加载指示器
     console.log('视频开始加载...');
 }
 
-// 隐藏加载状态
 function hideLoading() {
     console.log('视频加载完成');
 }
 
-// 显示全屏加载状态
 function showFullscreenLoading() {
     const indicator = document.getElementById('loading-indicator');
     if (indicator) {
         indicator.style.display = 'block';
+        console.log('显示全屏加载指示器');
     }
 }
 
-// 隐藏全屏加载状态
 function hideFullscreenLoading() {
     const indicator = document.getElementById('loading-indicator');
     if (indicator) {
         indicator.style.display = 'none';
+        console.log('隐藏全屏加载指示器');
     }
 }
 
-// 处理视频错误
+// 错误处理
 function handleVideoError(e) {
     console.error('视频加载错误:', e);
     hideLoading();
-    // 只在真正需要时显示错误提示
+    
     if (e.target && e.target.src) {
         console.log('视频文件路径:', e.target.src);
-        showError('视频加载失败，请检查文件是否存在');
+        showError('视频加载失败，请检查网络连接');
     }
 }
 
-// 处理全屏视频错误
 function handleFullscreenVideoError(e) {
     console.error('全屏视频加载错误:', e);
     hideFullscreenLoading();
-    // 只有在真正播放时才显示错误，关闭时不显示
+    
     if (isFullscreen && e.target && e.target.src) {
         console.log('全屏视频文件路径:', e.target.src);
         showError('视频播放失败，请检查文件是否存在');
     }
 }
 
-// 显示错误信息
 function showError(message) {
-    // 使用更友好的错误提示方式
-    console.warn('用户提示:', message);
+    console.warn('显示错误信息:', message);
     
-    // 创建自定义错误提示
+    // 创建错误提示
     const errorDiv = document.createElement('div');
     errorDiv.style.cssText = `
         position: fixed;
@@ -214,67 +450,49 @@ function showError(message) {
         right: 20px;
         background: #ff4757;
         color: white;
-        padding: 15px 20px;
-        border-radius: 8px;
+        padding: 12px 18px;
+        border-radius: 6px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         z-index: 10000;
         font-size: 14px;
-        max-width: 300px;
-        animation: slideIn 0.3s ease;
+        max-width: 280px;
+        animation: errorSlideIn 0.3s ease;
     `;
     errorDiv.textContent = message;
-    
-    // 添加动画样式
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-    `;
-    document.head.appendChild(style);
     
     document.body.appendChild(errorDiv);
     
     // 3秒后自动消失
     setTimeout(() => {
-        errorDiv.style.animation = 'slideIn 0.3s ease reverse';
-        setTimeout(() => {
-            if (errorDiv.parentNode) {
-                errorDiv.parentNode.removeChild(errorDiv);
-            }
-            if (style.parentNode) {
-                style.parentNode.removeChild(style);
-            }
-        }, 300);
+        if (errorDiv.parentNode) {
+            errorDiv.parentNode.removeChild(errorDiv);
+        }
     }, 3000);
 }
 
-// 视频播放事件
+// 视频事件处理
 function onVideoPlay(e) {
     console.log('视频开始播放');
-    // 可以添加播放统计等逻辑
 }
 
-// 视频暂停事件
 function onVideoPause(e) {
     console.log('视频暂停');
 }
 
-// 视频结束事件
 function onVideoEnd(e) {
     console.log('视频播放结束');
-    // 如果是全屏播放，可以自动关闭
-    if (isFullscreen) {
-        setTimeout(() => {
-            closeFullscreen();
-        }, 2000); // 2秒后自动关闭
-    }
 }
 
-// 设置懒加载
+// 懒加载设置
 function setupLazyLoading() {
-    // 创建Intersection Observer用于懒加载
+    console.log('设置懒加载');
+    
+    if (!window.IntersectionObserver) {
+        console.log('浏览器不支持 IntersectionObserver，跳过懒加载');
+        loadAllMedia();
+        return;
+    }
+    
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -284,95 +502,75 @@ function setupLazyLoading() {
                 } else if (element.tagName === 'IMG') {
                     loadImageLazily(element);
                 }
-                observer.unobserve(element); // 加载后停止观察
+                observer.unobserve(element);
             }
         });
     }, {
-        rootMargin: '50px' // 提前50px开始加载
+        rootMargin: '50px'
     });
-
+    
     // 观察所有视频和图片元素
     const videos = document.querySelectorAll('video[data-src]');
     const images = document.querySelectorAll('img[data-src]');
     
-    console.log('Found videos:', videos.length); // 调试信息
-    console.log('Found images:', images.length); // 调试信息
+    console.log('找到懒加载视频:', videos.length);
+    console.log('找到懒加载图片:', images.length);
     
-    videos.forEach(video => {
-        observer.observe(video);
-    });
-    
-    images.forEach(img => {
-        observer.observe(img);
-    });
-    
-    // 立即检查可见元素
-    setTimeout(() => {
-        videos.forEach(video => {
-            const rect = video.getBoundingClientRect();
-            if (rect.top < window.innerHeight && rect.bottom > 0) {
-                loadVideoLazily(video);
-            }
-        });
-        
-        images.forEach(img => {
-            const rect = img.getBoundingClientRect();
-            if (rect.top < window.innerHeight && rect.bottom > 0) {
-                loadImageLazily(img);
-            }
-        });
-    }, 100);
+    videos.forEach(video => observer.observe(video));
+    images.forEach(img => observer.observe(img));
 }
 
-// 懒加载视频
 function loadVideoLazily(video) {
     const dataSrc = video.getAttribute('data-src');
-    console.log('Loading video:', dataSrc); // 调试信息
+    console.log('懒加载视频:', dataSrc);
+    
     if (dataSrc) {
-        // 设置视频源
         video.src = dataSrc;
-        
-        // 设置source标签
-        const source = video.querySelector('source');
-        if (source) {
-            source.src = dataSrc;
-        }
-        
-        // 预加载元数据
         video.preload = 'metadata';
         video.load();
         
-        // 确保视频显示第一帧
         video.addEventListener('loadeddata', function() {
-            this.currentTime = 0.1;
-            console.log('Video loaded successfully:', dataSrc); // 调试信息
+            console.log('视频懒加载成功:', dataSrc);
         }, { once: true });
-        
-        // 添加错误处理
-        video.addEventListener('error', function(e) {
-            console.error('Video loading error:', dataSrc, e); // 调试信息
-        }, { once: true });
-    } else {
-        console.error('No data-src found for video:', video); // 调试信息
     }
 }
 
-// 懒加载图片
 function loadImageLazily(img) {
     const dataSrc = img.getAttribute('data-src');
-    console.log('Loading image:', dataSrc); // 调试信息
+    console.log('懒加载图片:', dataSrc);
+    
     if (dataSrc) {
         img.src = dataSrc;
         img.classList.remove('lazy-image');
         img.classList.add('loaded');
-        console.log('Image loaded successfully:', dataSrc); // 调试信息
-    } else {
-        console.error('No data-src found for image:', img); // 调试信息
     }
 }
 
-// 预加载关键图片（头像和模卡1）
+function loadAllMedia() {
+    console.log('加载所有媒体资源');
+    
+    const videos = document.querySelectorAll('video[data-src]');
+    const images = document.querySelectorAll('img[data-src]');
+    
+    videos.forEach(video => {
+        const dataSrc = video.getAttribute('data-src');
+        if (dataSrc) {
+            video.src = dataSrc;
+        }
+    });
+    
+    images.forEach(img => {
+        const dataSrc = img.getAttribute('data-src');
+        if (dataSrc) {
+            img.src = dataSrc;
+        }
+    });
+}
+
+// 预加载关键图片
 function preloadCriticalImages() {
+    console.log('预加载关键图片');
+    
     const criticalImages = [
         'assets/images/avatar.jpg',
         'pictures/模卡1.jpg'
@@ -386,25 +584,74 @@ function preloadCriticalImages() {
 
 // 响应式处理
 function setupResponsiveHandlers() {
-    let resizeTimer;
+    console.log('设置响应式处理');
     
+    let resizeTimer;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(handleResize, 250);
     });
 }
 
-// 处理窗口大小变化
 function handleResize() {
-    // 重新计算视频布局
-    const videoGrid = document.querySelector('.video-grid');
-    if (videoGrid) {
-        // 可以在这里添加响应式调整逻辑
-        console.log('窗口大小变化，重新调整布局');
+    console.log('窗口大小变化，当前宽度:', window.innerWidth);
+}
+
+// 设备检测
+function isMobile() {
+    return window.innerWidth <= 767;
+}
+
+function isTablet() {
+    return window.innerWidth >= 768 && window.innerWidth <= 1023;
+}
+
+function isDesktop() {
+    return window.innerWidth >= 1024;
+}
+
+// 页面可见性变化处理
+document.addEventListener('visibilitychange', function() {
+    console.log('页面可见性变化:', document.hidden ? '隐藏' : '显示');
+    
+    if (document.hidden) {
+        // 页面隐藏时暂停全屏视频
+        if (isFullscreen && currentVideo) {
+            console.log('页面隐藏，暂停全屏视频');
+            currentVideo.pause();
+        }
+        
+        // 关闭所有全屏模式
+        const videoModal = document.getElementById('fullscreen-modal');
+        const imageModal = document.getElementById('image-modal');
+        
+        if (videoModal && videoModal.classList.contains('active')) {
+            console.log('页面隐藏，关闭视频全屏');
+            closeFullscreen();
+        }
+        
+        if (imageModal && imageModal.classList.contains('active')) {
+            console.log('页面隐藏，关闭图片全屏');
+            closeImageFullscreen();
+        }
+    }
+});
+
+// 微信环境检测和特殊处理
+function setupWechatHandlers() {
+    if (typeof WeixinJSBridge !== 'undefined') {
+        console.log('检测到微信环境，设置特殊处理');
+        
+        // 微信返回键特殊处理
+        document.addEventListener('WeixinJSBridgeReady', function() {
+            WeixinJSBridge.invoke('getNetworkType', {}, function() {
+                console.log('微信JSBridge准备就绪');
+            });
+        });
     }
 }
 
-// 工具函数：防抖
+// 工具函数
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -417,7 +664,6 @@ function debounce(func, wait) {
     };
 }
 
-// 工具函数：节流
 function throttle(func, limit) {
     let inThrottle;
     return function() {
@@ -431,94 +677,8 @@ function throttle(func, limit) {
     };
 }
 
-// 检测设备类型
-function isMobile() {
-    return window.innerWidth <= 767;
-}
-
-function isTablet() {
-    return window.innerWidth >= 768 && window.innerWidth <= 1023;
-}
-
-function isDesktop() {
-    return window.innerWidth >= 1024;
-}
-
-// 添加触摸反馈
-document.addEventListener('DOMContentLoaded', function() {
-    const videoItems = document.querySelectorAll('.video-item, .video-container');
-    
-    videoItems.forEach(item => {
-        item.addEventListener('touchstart', function() {
-            this.style.transform = 'scale(0.95)';
-        });
-        
-        item.addEventListener('touchend', function() {
-            this.style.transform = '';
-        });
-    });
-});
-
-// 页面可见性变化处理
-document.addEventListener('visibilitychange', function() {
-    if (document.hidden && isFullscreen) {
-        // 页面隐藏时暂停视频
-        const fullscreenVideo = document.getElementById('fullscreen-video');
-        if (fullscreenVideo && !fullscreenVideo.paused) {
-            fullscreenVideo.pause();
-        }
-    }
-});
-
-// 图片全屏功能
-function openImageFullscreen(imageSrc) {
-    const modal = document.getElementById('image-modal');
-    const fullscreenImage = document.getElementById('fullscreen-image');
-    
-    if (!modal || !fullscreenImage) return;
-    
-    // 设置图片源
-    fullscreenImage.src = imageSrc;
-    
-    // 显示模态框
-    modal.classList.add('active');
-    
-    // 添加点击背景关闭功能
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            closeImageFullscreen();
-        }
-    });
-    
-    // ESC键关闭
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-            closeImageFullscreen();
-        }
-    });
-    
-    // 添加返回按钮监听器
-    addBackButtonHandler();
-}
-
-// 关闭图片全屏
-function closeImageFullscreen() {
-    const modal = document.getElementById('image-modal');
-    const fullscreenImage = document.getElementById('fullscreen-image');
-    
-    if (!modal) return;
-    
-    // 隐藏模态框
-    modal.classList.remove('active');
-    
-    // 移除返回按钮监听器
-    removeBackButtonHandler();
-    
-    // 清除图片源
-    if (fullscreenImage) {
-        fullscreenImage.src = '';
-    }
-}
+// 初始化微信处理
+setupWechatHandlers();
 
 // 导出函数供全局使用
 window.playFullscreen = playFullscreen;
@@ -526,102 +686,4 @@ window.closeFullscreen = closeFullscreen;
 window.openImageFullscreen = openImageFullscreen;
 window.closeImageFullscreen = closeImageFullscreen;
 
-// 返回按钮处理相关变量
-let backButtonHandler = null;
-let isImageFullscreen = false;
-
-// 设置返回按钮处理器
-function setupBackButtonHandler() {
-    // 这个函数在初始化时调用，设置基础监听
-}
-
-// 添加返回按钮监听器
-function addBackButtonHandler() {
-    // 移除之前的监听器（如果存在）
-    removeBackButtonHandler();
-    
-    // 检查浏览器是否支持History API
-    if (!window.history || !window.history.pushState) {
-        console.log('浏览器不支持History API，跳过返回键处理');
-        return;
-    }
-    
-    // 检测微信浏览器
-    const isWeChat = /micromessenger/i.test(navigator.userAgent);
-    console.log('检测到微信浏览器:', isWeChat);
-    
-    // 使用 History API 来处理返回按钮
-    // 添加一个历史记录条目
-    const state = { fullscreen: true, timestamp: Date.now() };
-    try {
-        history.pushState(state, '', window.location.href);
-        console.log('历史记录已添加');
-    } catch (e) {
-        console.log('添加历史记录失败:', e);
-        return;
-    }
-    
-    // 监听 popstate 事件
-    backButtonHandler = function(event) {
-        console.log('返回键被按下，事件详情:', event);
-        
-        // 检查是否有全屏模态框打开
-        const videoModal = document.getElementById('fullscreen-modal');
-        const imageModal = document.getElementById('image-modal');
-        
-        if (videoModal && videoModal.classList.contains('active')) {
-            console.log('关闭视频全屏');
-            // 视频全屏打开，关闭视频全屏
-            closeFullscreen();
-            
-            // 微信浏览器特殊处理：立即重新添加历史记录
-            if (isWeChat) {
-                setTimeout(() => {
-                    try {
-                        history.pushState({ fullscreen: true, timestamp: Date.now() }, '', window.location.href);
-                        console.log('微信浏览器：重新添加历史记录');
-                    } catch (e) {
-                        console.log('重新添加历史记录失败:', e);
-                    }
-                }, 10);
-            }
-            
-            event.preventDefault();
-            return false;
-        } else if (imageModal && imageModal.classList.contains('active')) {
-            console.log('关闭图片全屏');
-            // 图片全屏打开，关闭图片全屏
-            closeImageFullscreen();
-            
-            // 微信浏览器特殊处理：立即重新添加历史记录
-            if (isWeChat) {
-                setTimeout(() => {
-                    try {
-                        history.pushState({ fullscreen: true, timestamp: Date.now() }, '', window.location.href);
-                        console.log('微信浏览器：重新添加历史记录');
-                    } catch (e) {
-                        console.log('重新添加历史记录失败:', e);
-                    }
-                }, 10);
-            }
-            
-            event.preventDefault();
-            return false;
-        }
-        
-        console.log('没有全屏状态，允许正常返回');
-    };
-    
-    // 添加事件监听器
-    window.addEventListener('popstate', backButtonHandler);
-    console.log('返回键监听器已添加');
-}
-
-// 移除返回按钮监听器
-function removeBackButtonHandler() {
-    if (backButtonHandler) {
-        window.removeEventListener('popstate', backButtonHandler);
-        backButtonHandler = null;
-        console.log('返回键监听器已移除');
-    }
-}
+console.log('全屏控制模块加载完成');

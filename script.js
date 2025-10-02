@@ -110,6 +110,8 @@ function closeFullscreen() {
     const modal = document.getElementById('fullscreen-modal');
     const fullscreenVideo = document.getElementById('fullscreen-video');
     
+    console.log('开始关闭全屏视频');
+    
     // 先设置标志，避免错误处理函数执行
     isFullscreen = false;
     
@@ -143,6 +145,8 @@ function closeFullscreen() {
     removeBackButton();
     
     currentVideo = null;
+    
+    console.log('全屏视频已关闭');
 }
 
 // 显示加载状态
@@ -499,6 +503,8 @@ function closeImageFullscreen() {
     const modal = document.getElementById('image-modal');
     const fullscreenImage = document.getElementById('fullscreen-image');
     
+    console.log('开始关闭全屏图片');
+    
     if (!modal) return;
     
     // 隐藏模态框
@@ -511,6 +517,8 @@ function closeImageFullscreen() {
     if (fullscreenImage) {
         fullscreenImage.src = '';
     }
+    
+    console.log('全屏图片已关闭');
 }
 
 // 导出函数供全局使用
@@ -519,54 +527,81 @@ window.closeFullscreen = closeFullscreen;
 window.openImageFullscreen = openImageFullscreen;
 window.closeImageFullscreen = closeImageFullscreen;
 
-// 返回键处理 - 重写版本
+// 返回键处理 - 优化版本
 let backButtonHandler = null;
+let isBackButtonActive = false;
 
 // 设置返回键拦截
 function setupBackButton() {
-    // 移除之前的监听器
+    // 如果已经激活，直接返回
+    if (isBackButtonActive) {
+        return;
+    }
+    
+    // 移除之前的监听器（安全措施）
     if (backButtonHandler) {
         window.removeEventListener('popstate', backButtonHandler);
     }
     
-    // 添加历史记录
-    history.pushState({ fullscreen: true }, '', window.location.href);
+    // 添加历史记录，标记全屏状态
+    history.pushState({ fullscreen: true, timestamp: Date.now() }, '', window.location.href);
     
-    // 监听返回键
+    // 创建返回键处理函数
     backButtonHandler = function(event) {
-        // 检查是否有全屏打开
+        console.log('返回键被触发，当前状态:', {
+            videoModal: document.getElementById('fullscreen-modal')?.classList.contains('active'),
+            imageModal: document.getElementById('image-modal')?.classList.contains('active'),
+            isFullscreen: isFullscreen
+        });
+        
+        // 检查视频全屏状态
         const videoModal = document.getElementById('fullscreen-modal');
-        const imageModal = document.getElementById('image-modal');
-        
         if (videoModal && videoModal.classList.contains('active')) {
+            console.log('关闭视频全屏');
             closeFullscreen();
-            // 重新添加拦截
-            setTimeout(() => {
-                history.pushState({ fullscreen: true }, '', window.location.href);
-            }, 10);
+            // 阻止默认的返回行为
+            event.preventDefault();
             return false;
         }
         
+        // 检查图片全屏状态
+        const imageModal = document.getElementById('image-modal');
         if (imageModal && imageModal.classList.contains('active')) {
+            console.log('关闭图片全屏');
             closeImageFullscreen();
-            // 重新添加拦截
-            setTimeout(() => {
-                history.pushState({ fullscreen: true }, '', window.location.href);
-            }, 10);
+            // 阻止默认的返回行为
+            event.preventDefault();
             return false;
         }
+        
+        // 如果没有全屏状态，允许正常返回
+        console.log('没有全屏状态，允许正常返回');
     };
     
+    // 添加事件监听器
     window.addEventListener('popstate', backButtonHandler);
+    isBackButtonActive = true;
+    
+    console.log('返回键拦截已激活');
 }
 
 // 移除返回键拦截
 function removeBackButton() {
+    // 移除事件监听器
     if (backButtonHandler) {
         window.removeEventListener('popstate', backButtonHandler);
         backButtonHandler = null;
     }
     
-    // 清理历史记录
-    history.replaceState({ base: true }, '', window.location.href);
+    // 重置状态
+    isBackButtonActive = false;
+    
+    // 清理历史记录，恢复到基础状态
+    try {
+        history.replaceState({ base: true, timestamp: Date.now() }, '', window.location.href);
+    } catch (e) {
+        console.log('清理历史记录时出现错误:', e);
+    }
+    
+    console.log('返回键拦截已移除');
 }

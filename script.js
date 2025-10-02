@@ -575,7 +575,7 @@ function addBackButtonHandler() {
         return;
     }
     
-    // 最简单的方式：添加一个历史记录
+    // 添加历史记录拦截返回键
     try {
         history.pushState({ fullscreen: true }, '', window.location.href);
         console.log('已添加全屏历史记录');
@@ -595,10 +595,28 @@ function addBackButtonHandler() {
         if (videoModal && videoModal.classList.contains('active')) {
             console.log('关闭视频全屏');
             closeFullscreen();
+            // 立即重新添加历史记录，防止下次返回退出网页
+            setTimeout(() => {
+                try {
+                    history.pushState({ fullscreen: true }, '', window.location.href);
+                    console.log('重新添加拦截层');
+                } catch (e) {
+                    console.log('重新添加失败:', e);
+                }
+            }, 10);
             return false;
         } else if (imageModal && imageModal.classList.contains('active')) {
             console.log('关闭图片全屏');
             closeImageFullscreen();
+            // 立即重新添加历史记录，防止下次返回退出网页
+            setTimeout(() => {
+                try {
+                    history.pushState({ fullscreen: true }, '', window.location.href);
+                    console.log('重新添加拦截层');
+                } catch (e) {
+                    console.log('重新添加失败:', e);
+                }
+            }, 10);
             return false;
         } else {
             console.log('没有全屏，允许退出');

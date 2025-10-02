@@ -578,15 +578,30 @@ function addBackButtonHandler() {
         return;
     }
     
-    // 针对微信浏览器使用特殊策略
+    // 针对微信浏览器使用最激进的策略
     if (browser === 'wechat') {
-        // 微信浏览器：使用多层历史记录防止退出
+        // 微信浏览器：使用大量历史记录 + beforeunload 拦截
         try {
-            history.pushState({ fullscreen: true, step: 1 }, '', window.location.href);
-            history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
-            history.pushState({ fullscreen: true, step: 3 }, '', window.location.href);
-            history.pushState({ fullscreen: true, step: 4 }, '', window.location.href);
-            console.log('微信浏览器：已添加四重历史记录哨兵');
+            // 添加大量历史记录
+            for (let i = 1; i <= 10; i++) {
+                history.pushState({ fullscreen: true, step: i }, '', window.location.href);
+            }
+            console.log('微信浏览器：已添加十重历史记录哨兵');
+            
+            // 添加页面离开拦截
+            window.addEventListener('beforeunload', function(e) {
+                const videoModal = document.getElementById('fullscreen-modal');
+                const imageModal = document.getElementById('image-modal');
+                
+                if ((videoModal && videoModal.classList.contains('active')) || 
+                    (imageModal && imageModal.classList.contains('active'))) {
+                    console.log('微信浏览器：拦截页面离开');
+                    e.preventDefault();
+                    e.returnValue = '';
+                    return '';
+                }
+            });
+            
         } catch (e) {
             console.log('添加历史记录失败:', e);
             return;
@@ -623,15 +638,14 @@ function addBackButtonHandler() {
                 closeImageFullscreen();
             }
             
-            // 微信浏览器：立即重新添加多层历史记录
+            // 微信浏览器：立即重新添加大量历史记录
             if (browser === 'wechat') {
                 setTimeout(() => {
                     try {
-                        history.pushState({ fullscreen: true, step: 1 }, '', window.location.href);
-                        history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
-                        history.pushState({ fullscreen: true, step: 3 }, '', window.location.href);
-                        history.pushState({ fullscreen: true, step: 4 }, '', window.location.href);
-                        console.log('微信浏览器：重新添加四重拦截层');
+                        for (let i = 1; i <= 10; i++) {
+                            history.pushState({ fullscreen: true, step: i }, '', window.location.href);
+                        }
+                        console.log('微信浏览器：重新添加十重拦截层');
                     } catch (e) {
                         console.log('重新添加历史记录失败:', e);
                     }
@@ -656,5 +670,16 @@ function removeBackButtonHandler() {
         window.removeEventListener('popstate', backButtonHandler);
         backButtonHandler = null;
         console.log('返回键监听器已移除');
+    }
+    
+    // 移除 beforeunload 监听器（微信浏览器）
+    const browser = detectBrowser();
+    if (browser === 'wechat') {
+        window.removeEventListener('beforeunload', function(e) {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        });
+        console.log('微信浏览器：已移除页面离开拦截');
     }
 }

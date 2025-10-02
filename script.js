@@ -535,10 +535,11 @@ function addBackButtonHandler() {
     }
     
     // 使用 History API 来处理返回按钮
-    // 添加一个历史记录条目
+    // 添加一个历史记录条目，使用replaceState避免增加历史记录
     const state = { fullscreen: true, timestamp: Date.now() };
     try {
-        history.pushState(state, '', window.location.href);
+        // 使用replaceState而不是pushState，这样不会增加历史记录
+        history.replaceState(state, '', window.location.href);
     } catch (e) {
         console.log('添加历史记录失败:', e);
         return;
@@ -563,6 +564,10 @@ function addBackButtonHandler() {
             closeImageFullscreen();
             event.preventDefault();
             return false;
+        } else {
+            // 没有全屏模态框打开，允许正常返回
+            console.log('没有全屏模态框，允许正常返回');
+            // 不阻止默认行为，让浏览器正常处理返回
         }
     };
     

@@ -1,4 +1,4 @@
-//0930版本
+//0930版本再上传
 // 全局变量
 let currentVideo = null;
 let isFullscreen = false;

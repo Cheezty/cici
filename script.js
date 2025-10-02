@@ -550,31 +550,23 @@ function setupBackButtonHandler() {
     // 这个函数在初始化时调用，设置基础监听
 }
 
-// 添加返回按钮监听器 - 重写版本
+// 添加返回按钮监听器 - 专注全屏版本
 function addBackButtonHandler() {
-    console.log('=== 开始设置返回键拦截 ===');
+    console.log('设置全屏返回键拦截');
     
     // 移除之前的监听器
     removeBackButtonHandler();
     
     // 检查浏览器是否支持History API
     if (!window.history || !window.history.pushState) {
-        console.log('浏览器不支持History API，跳过返回键处理');
+        console.log('浏览器不支持History API');
         return;
     }
     
-    // 最笨但最可靠的方法：添加多层历史记录
+    // 添加历史记录拦截
     try {
-        // 添加5层历史记录，确保返回键不会退出网页
-        for (let i = 1; i <= 5; i++) {
-            history.pushState({ 
-                fullscreen: true, 
-                layer: i,
-                timestamp: Date.now() 
-            }, '', window.location.href);
-        }
-        console.log('已添加5层历史记录拦截');
-        backButtonBlocked = true;
+        history.pushState({ fullscreen: true }, '', window.location.href);
+        console.log('已添加全屏拦截层');
     } catch (e) {
         console.log('添加历史记录失败:', e);
         return;
@@ -582,60 +574,45 @@ function addBackButtonHandler() {
     
     // 监听 popstate 事件
     backButtonHandler = function(event) {
-        console.log('返回键被按下，当前状态:', window.history.state);
+        console.log('返回键被按下');
         
-        // 检查是否有全屏模态框打开
+        // 检查全屏状态
         const videoModal = document.getElementById('fullscreen-modal');
         const imageModal = document.getElementById('image-modal');
         
-        const isVideoActive = videoModal && videoModal.classList.contains('active');
-        const isImageActive = imageModal && imageModal.classList.contains('active');
-        
-        if (isVideoActive || isImageActive) {
-            console.log('检测到全屏状态，关闭全屏');
-            
-            // 关闭对应的全屏
-            if (isVideoActive) {
-                closeFullscreen();
-            } else if (isImageActive) {
-                closeImageFullscreen();
-            }
-            
+        if (videoModal && videoModal.classList.contains('active')) {
+            console.log('全屏视频打开，关闭全屏');
+            closeFullscreen();
             // 立即重新添加拦截层
             setTimeout(() => {
-                try {
-                    for (let i = 1; i <= 5; i++) {
-                        history.pushState({ 
-                            fullscreen: true, 
-                            layer: i,
-                            timestamp: Date.now() 
-                        }, '', window.location.href);
-                    }
-                    console.log('重新添加5层拦截');
-                } catch (e) {
-                    console.log('重新添加失败:', e);
-                }
+                history.pushState({ fullscreen: true }, '', window.location.href);
+                console.log('重新添加拦截层');
             }, 10);
-            
-            // 阻止默认行为
-            event.preventDefault();
-            event.stopPropagation();
             return false;
-        } else {
-            console.log('没有全屏状态，允许正常退出');
-            // 不阻止，让浏览器正常处理
         }
+        
+        if (imageModal && imageModal.classList.contains('active')) {
+            console.log('全屏图片打开，关闭全屏');
+            closeImageFullscreen();
+            // 立即重新添加拦截层
+            setTimeout(() => {
+                history.pushState({ fullscreen: true }, '', window.location.href);
+                console.log('重新添加拦截层');
+            }, 10);
+            return false;
+        }
+        
+        console.log('没有全屏，不处理');
     };
     
     // 添加事件监听器
     window.addEventListener('popstate', backButtonHandler);
-    console.log('返回键监听器已添加');
-    console.log('=== 返回键拦截设置完成 ===');
+    console.log('全屏返回键拦截已设置');
 }
 
-// 移除返回按钮监听器 - 重写版本
+// 移除返回按钮监听器 - 专注全屏版本
 function removeBackButtonHandler() {
-    console.log('=== 开始移除返回键拦截 ===');
+    console.log('移除全屏返回键拦截');
     
     if (backButtonHandler) {
         window.removeEventListener('popstate', backButtonHandler);
@@ -643,17 +620,11 @@ function removeBackButtonHandler() {
         console.log('返回键监听器已移除');
     }
     
-    // 清理所有历史记录，恢复到正常状态
+    // 清理历史记录
     try {
-        if (backButtonBlocked) {
-            // 回到原始页面状态
-            history.replaceState({ base: true }, '', window.location.href);
-            console.log('已清理所有拦截层，恢复基础状态');
-            backButtonBlocked = false;
-        }
+        history.replaceState({ base: true }, '', window.location.href);
+        console.log('已清理拦截层');
     } catch (e) {
         console.log('清理历史记录失败:', e);
     }
-    
-    console.log('=== 返回键拦截移除完成 ===');
 }

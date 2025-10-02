@@ -111,6 +111,10 @@ function playFullscreen(videoElement) {
     } else {
         // 微信浏览器：在进入全屏时添加历史记录
         history.pushState({ wechatFullscreen: true, timestamp: Date.now() }, '', window.location.href);
+        // 显示微信浏览器提示
+        showWeChatFullscreenTip();
+        // 增强关闭按钮
+        enhanceCloseButton(modal);
     }
 }
 
@@ -511,6 +515,10 @@ function openImageFullscreen(imageSrc) {
     } else {
         // 微信浏览器：在进入全屏时添加历史记录
         history.pushState({ wechatFullscreen: true, timestamp: Date.now() }, '', window.location.href);
+        // 显示微信浏览器提示
+        showWeChatFullscreenTip();
+        // 增强关闭按钮
+        enhanceCloseButton(modal);
     }
 }
 
@@ -552,44 +560,15 @@ function detectWeChatBrowser() {
     console.log('微信浏览器检测结果:', isWeChatBrowser);
     
     if (isWeChatBrowser) {
-        console.log('检测到微信浏览器，启用特殊返回键处理');
+        console.log('检测到微信浏览器，启用用户体验优化');
         // 微信浏览器需要特殊处理
-        setupWeChatBackButtonHandler();
+        setupWeChatUserExperience();
     }
 }
 
-// 微信浏览器返回键处理
-function setupWeChatBackButtonHandler() {
-    // 微信浏览器的返回键处理
-    window.addEventListener('popstate', function(event) {
-        console.log('微信浏览器返回键触发');
-        
-        // 检查视频全屏状态
-        const videoModal = document.getElementById('fullscreen-modal');
-        if (videoModal && videoModal.classList.contains('active')) {
-            console.log('微信浏览器：关闭视频全屏');
-            closeFullscreen();
-            // 立即重新添加历史记录，防止退出网页
-            setTimeout(() => {
-                history.pushState({ wechatFullscreen: true, timestamp: Date.now() }, '', window.location.href);
-            }, 10);
-            return;
-        }
-        
-        // 检查图片全屏状态
-        const imageModal = document.getElementById('image-modal');
-        if (imageModal && imageModal.classList.contains('active')) {
-            console.log('微信浏览器：关闭图片全屏');
-            closeImageFullscreen();
-            // 立即重新添加历史记录，防止退出网页
-            setTimeout(() => {
-                history.pushState({ wechatFullscreen: true, timestamp: Date.now() }, '', window.location.href);
-            }, 10);
-            return;
-        }
-        
-        console.log('微信浏览器：没有全屏状态，允许正常返回');
-    });
+// 微信浏览器用户体验优化
+function setupWeChatUserExperience() {
+    console.log('微信浏览器：设置用户体验优化');
     
     // 微信浏览器特殊处理：页面加载时添加基础历史记录
     try {
@@ -598,6 +577,9 @@ function setupWeChatBackButtonHandler() {
     } catch (e) {
         console.log('微信浏览器：添加基础历史记录失败', e);
     }
+    
+    // 添加微信浏览器提示样式
+    addWeChatStyles();
 }
 
 // 返回键处理 - 优化版本
@@ -689,4 +671,136 @@ function removeBackButton() {
     }
     
     console.log('返回键拦截已移除');
+}
+
+// 添加微信浏览器专用样式
+function addWeChatStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+        /* 微信浏览器全屏提示 */
+        .wechat-fullscreen-tip {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 10001;
+            animation: fadeInOut 3s ease-in-out;
+            pointer-events: none;
+        }
+        
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+        
+        /* 微信浏览器全屏关闭按钮增强 */
+        .wechat-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10002;
+            transition: all 0.3s ease;
+        }
+        
+        .wechat-close-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.1);
+        }
+        
+        .wechat-close-btn::before,
+        .wechat-close-btn::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 2px;
+            background: white;
+            border-radius: 1px;
+        }
+        
+        .wechat-close-btn::before {
+            transform: rotate(45deg);
+        }
+        
+        .wechat-close-btn::after {
+            transform: rotate(-45deg);
+        }
+        
+        /* 微信浏览器全屏提示文字 */
+        .wechat-close-text {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 16px;
+            border-radius: 15px;
+            z-index: 10002;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// 显示微信浏览器全屏提示
+function showWeChatFullscreenTip() {
+    if (!isWeChatBrowser) return;
+    
+    const tip = document.createElement('div');
+    tip.className = 'wechat-fullscreen-tip';
+    tip.textContent = '点击右上角按钮退出全屏';
+    document.body.appendChild(tip);
+    
+    // 3秒后自动移除
+    setTimeout(() => {
+        if (tip.parentNode) {
+            tip.parentNode.removeChild(tip);
+        }
+    }, 3000);
+}
+
+// 增强关闭按钮（微信浏览器专用）
+function enhanceCloseButton(modal) {
+    if (!isWeChatBrowser) return;
+    
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) {
+        // 添加微信浏览器专用样式
+        closeBtn.classList.add('wechat-close-btn');
+        
+        // 添加提示文字
+        const tipText = document.createElement('div');
+        tipText.className = 'wechat-close-text';
+        tipText.textContent = '点击此处退出全屏';
+        modal.appendChild(tipText);
+        
+        // 5秒后隐藏提示文字
+        setTimeout(() => {
+            if (tipText.parentNode) {
+                tipText.style.opacity = '0';
+                setTimeout(() => {
+                    if (tipText.parentNode) {
+                        tipText.parentNode.removeChild(tipText);
+                    }
+                }, 500);
+            }
+        }, 5000);
+    }
 }

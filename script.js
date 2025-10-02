@@ -1,3 +1,4 @@
+//0930版本
 // 全局变量
 let currentVideo = null;
 let isFullscreen = false;

@@ -5,6 +5,12 @@ let isFullscreen = false;
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
+    // 基础哨兵：确保非全屏时返回键为正常返回
+    try {
+        if (window.history && window.history.replaceState) {
+            history.replaceState({ base: true }, '', window.location.href);
+        }
+    } catch (_) {}
 });
 
 // 初始化应用
@@ -96,7 +102,7 @@ function playFullscreen(videoElement) {
     // 记录当前视频
     currentVideo = fullscreenVideo;
     
-    // 添加返回按钮监听器
+    // 添加返回按钮监听器（进入全屏时设置哨兵）
     addBackButtonHandler();
 }
 
@@ -137,15 +143,12 @@ function closeFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
-    // 简单清理历史记录
+    // 恢复基础哨兵，不调用 back，避免退站
     try {
-        if (window.history && window.history.state && window.history.state.fullscreen) {
-            console.log('清理全屏历史记录');
-            window.history.back();
+        if (window.history && window.history.replaceState) {
+            history.replaceState({ base: true }, '', window.location.href);
         }
-    } catch (e) {
-        console.log('清理历史记录失败:', e);
-    }
+    } catch (_) {}
     
     currentVideo = null;
 }
@@ -512,15 +515,12 @@ function closeImageFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
-    // 简单清理历史记录
+    // 恢复基础哨兵，不调用 back，避免退站
     try {
-        if (window.history && window.history.state && window.history.state.fullscreen) {
-            console.log('清理全屏历史记录');
-            window.history.back();
+        if (window.history && window.history.replaceState) {
+            history.replaceState({ base: true }, '', window.location.href);
         }
-    } catch (e) {
-        console.log('清理历史记录失败:', e);
-    }
+    } catch (_) {}
     
     // 清除图片源
     if (fullscreenImage) {
@@ -554,11 +554,12 @@ function addBackButtonHandler() {
         return;
     }
     
-    // 添加一个历史记录条目，用于拦截返回键
-    const state = { fullscreen: true, timestamp: Date.now() };
+    // 添加一个历史记录条目，用于拦截返回键（全屏哨兵）
     try {
-        history.pushState(state, '', window.location.href);
-        console.log('已添加历史记录用于拦截返回键');
+        if (!window.history.state || !window.history.state.fullscreen) {
+            history.pushState({ fullscreen: true }, '', window.location.href);
+            console.log('已添加全屏哨兵');
+        }
     } catch (e) {
         console.log('添加历史记录失败:', e);
         return;

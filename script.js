@@ -143,12 +143,16 @@ function closeFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
-    // 恢复基础哨兵，不调用 back，避免退站
+    // 清理历史记录：回到基础状态
     try {
         if (window.history && window.history.replaceState) {
+            // 直接替换为原始页面状态，不调用back()
             history.replaceState({ base: true }, '', window.location.href);
+            console.log('已清理全屏历史记录，恢复基础状态');
         }
-    } catch (_) {}
+    } catch (e) {
+        console.log('清理历史记录失败:', e);
+    }
     
     currentVideo = null;
 }
@@ -515,12 +519,16 @@ function closeImageFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
-    // 恢复基础哨兵，不调用 back，避免退站
+    // 清理历史记录：回到基础状态
     try {
         if (window.history && window.history.replaceState) {
+            // 直接替换为原始页面状态，不调用back()
             history.replaceState({ base: true }, '', window.location.href);
+            console.log('已清理全屏历史记录，恢复基础状态');
         }
-    } catch (_) {}
+    } catch (e) {
+        console.log('清理历史记录失败:', e);
+    }
     
     // 清除图片源
     if (fullscreenImage) {
@@ -554,12 +562,13 @@ function addBackButtonHandler() {
         return;
     }
     
-    // 添加一个历史记录条目，用于拦截返回键（全屏哨兵）
+    // 主流网站的做法：使用双重历史记录策略
     try {
-        if (!window.history.state || !window.history.state.fullscreen) {
-            history.pushState({ fullscreen: true }, '', window.location.href);
-            console.log('已添加全屏哨兵');
-        }
+        // 第一次push：创建全屏状态
+        history.pushState({ fullscreen: true, step: 1 }, '', window.location.href);
+        // 第二次push：创建拦截层
+        history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
+        console.log('已添加双重历史记录哨兵');
     } catch (e) {
         console.log('添加历史记录失败:', e);
         return;
@@ -567,31 +576,41 @@ function addBackButtonHandler() {
     
     // 监听 popstate 事件
     backButtonHandler = function(event) {
-        console.log('返回键被按下');
+        console.log('返回键被按下，当前状态:', window.history.state);
         
         // 检查是否有全屏模态框打开
         const videoModal = document.getElementById('fullscreen-modal');
         const imageModal = document.getElementById('image-modal');
         
-        if (videoModal && videoModal.classList.contains('active')) {
-            console.log('全屏视频打开，直接调用关闭函数');
-            // 直接调用关闭函数，就像点击叉一样
-            closeFullscreen();
-            // 阻止默认行为
-            event.preventDefault();
-            event.stopPropagation();
-            return false;
-        } else if (imageModal && imageModal.classList.contains('active')) {
-            console.log('全屏图片打开，直接调用关闭函数');
-            // 直接调用关闭函数，就像点击叉一样
-            closeImageFullscreen();
-            // 阻止默认行为
-            event.preventDefault();
-            event.stopPropagation();
+        const isVideoActive = videoModal && videoModal.classList.contains('active');
+        const isImageActive = imageModal && imageModal.classList.contains('active');
+        
+        if (isVideoActive || isImageActive) {
+            console.log('全屏模态框打开，关闭全屏');
+            
+            // 关闭对应的全屏
+            if (isVideoActive) {
+                closeFullscreen();
+            } else if (isImageActive) {
+                closeImageFullscreen();
+            }
+            
+            // 关键：立即重新添加历史记录，防止下次返回退出网页
+            setTimeout(() => {
+                try {
+                    if (window.history.state && !window.history.state.fullscreen) {
+                        history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
+                        console.log('重新添加拦截层');
+                    }
+                } catch (e) {
+                    console.log('重新添加历史记录失败:', e);
+                }
+            }, 10);
+            
             return false;
         } else {
             console.log('没有全屏模态框，允许正常退出网页');
-            // 没有全屏模态框，允许正常退出网页
+            // 不阻止，让浏览器正常处理
         }
     };
     

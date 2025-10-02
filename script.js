@@ -146,8 +146,25 @@ function closeFullscreen() {
     // 清理历史记录：回到基础状态
     try {
         if (window.history && window.history.replaceState) {
-            // 直接替换为原始页面状态，不调用back()
-            history.replaceState({ base: true }, '', window.location.href);
+            const browser = detectBrowser();
+            
+            if (browser === 'baidu') {
+                // 百度浏览器：需要特殊处理，确保能正常退出
+                // 先回到基础状态
+                history.replaceState({ base: true }, '', window.location.href);
+                // 再添加一个退出层
+                setTimeout(() => {
+                    try {
+                        history.pushState({ exit: true }, '', window.location.href);
+                        console.log('百度浏览器：已添加退出层');
+                    } catch (e) {
+                        console.log('添加退出层失败:', e);
+                    }
+                }, 50);
+            } else {
+                // 其他浏览器：直接替换为原始页面状态
+                history.replaceState({ base: true }, '', window.location.href);
+            }
             console.log('已清理全屏历史记录，恢复基础状态');
         }
     } catch (e) {
@@ -522,8 +539,25 @@ function closeImageFullscreen() {
     // 清理历史记录：回到基础状态
     try {
         if (window.history && window.history.replaceState) {
-            // 直接替换为原始页面状态，不调用back()
-            history.replaceState({ base: true }, '', window.location.href);
+            const browser = detectBrowser();
+            
+            if (browser === 'baidu') {
+                // 百度浏览器：需要特殊处理，确保能正常退出
+                // 先回到基础状态
+                history.replaceState({ base: true }, '', window.location.href);
+                // 再添加一个退出层
+                setTimeout(() => {
+                    try {
+                        history.pushState({ exit: true }, '', window.location.href);
+                        console.log('百度浏览器：已添加退出层');
+                    } catch (e) {
+                        console.log('添加退出层失败:', e);
+                    }
+                }, 50);
+            } else {
+                // 其他浏览器：直接替换为原始页面状态
+                history.replaceState({ base: true }, '', window.location.href);
+            }
             console.log('已清理全屏历史记录，恢复基础状态');
         }
     } catch (e) {
@@ -551,10 +585,28 @@ function setupBackButtonHandler() {
     // 这个函数在初始化时调用，设置基础监听
 }
 
+// 检测浏览器类型
+function detectBrowser() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.includes('micromessenger')) {
+        return 'wechat';
+    } else if (userAgent.includes('baiduboxapp')) {
+        return 'baidu';
+    } else if (userAgent.includes('chrome')) {
+        return 'chrome';
+    } else if (userAgent.includes('safari')) {
+        return 'safari';
+    }
+    return 'unknown';
+}
+
 // 添加返回按钮监听器
 function addBackButtonHandler() {
     // 移除之前的监听器（如果存在）
     removeBackButtonHandler();
+    
+    const browser = detectBrowser();
+    console.log('检测到浏览器:', browser);
     
     // 检查浏览器是否支持History API
     if (!window.history || !window.history.pushState) {
@@ -562,13 +614,20 @@ function addBackButtonHandler() {
         return;
     }
     
-    // 主流网站的做法：使用双重历史记录策略
+    // 针对不同浏览器使用不同策略
     try {
-        // 第一次push：创建全屏状态
-        history.pushState({ fullscreen: true, step: 1 }, '', window.location.href);
-        // 第二次push：创建拦截层
-        history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
-        console.log('已添加双重历史记录哨兵');
+        if (browser === 'wechat') {
+            // 微信浏览器：使用更激进的双重push策略
+            history.pushState({ fullscreen: true, step: 1 }, '', window.location.href);
+            history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
+            history.pushState({ fullscreen: true, step: 3 }, '', window.location.href);
+            console.log('微信浏览器：已添加三重历史记录哨兵');
+        } else {
+            // 其他浏览器：使用标准双重策略
+            history.pushState({ fullscreen: true, step: 1 }, '', window.location.href);
+            history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
+            console.log('标准浏览器：已添加双重历史记录哨兵');
+        }
     } catch (e) {
         console.log('添加历史记录失败:', e);
         return;
@@ -595,12 +654,21 @@ function addBackButtonHandler() {
                 closeImageFullscreen();
             }
             
-            // 关键：立即重新添加历史记录，防止下次返回退出网页
+            // 针对不同浏览器重新添加拦截层
             setTimeout(() => {
                 try {
                     if (window.history.state && !window.history.state.fullscreen) {
-                        history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
-                        console.log('重新添加拦截层');
+                        if (browser === 'wechat') {
+                            // 微信浏览器：重新添加三重拦截
+                            history.pushState({ fullscreen: true, step: 1 }, '', window.location.href);
+                            history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
+                            history.pushState({ fullscreen: true, step: 3 }, '', window.location.href);
+                            console.log('微信浏览器：重新添加三重拦截层');
+                        } else {
+                            // 其他浏览器：重新添加双重拦截
+                            history.pushState({ fullscreen: true, step: 2 }, '', window.location.href);
+                            console.log('标准浏览器：重新添加拦截层');
+                        }
                     }
                 } catch (e) {
                     console.log('重新添加历史记录失败:', e);

@@ -137,6 +137,16 @@ function closeFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
+    // 清理历史记录
+    try {
+        // 如果当前历史记录是我们添加的，移除它
+        if (window.history && window.history.state && window.history.state.fullscreen) {
+            window.history.back();
+        }
+    } catch (e) {
+        console.log('清理历史记录失败:', e);
+    }
+    
     currentVideo = null;
 }
 
@@ -502,6 +512,16 @@ function closeImageFullscreen() {
     // 移除返回按钮监听器
     removeBackButtonHandler();
     
+    // 清理历史记录
+    try {
+        // 如果当前历史记录是我们添加的，移除它
+        if (window.history && window.history.state && window.history.state.fullscreen) {
+            window.history.back();
+        }
+    } catch (e) {
+        console.log('清理历史记录失败:', e);
+    }
+    
     // 清除图片源
     if (fullscreenImage) {
         fullscreenImage.src = '';
@@ -535,11 +555,11 @@ function addBackButtonHandler() {
     }
     
     // 使用 History API 来处理返回按钮
-    // 添加一个历史记录条目，使用replaceState避免增加历史记录
+    // 添加一个历史记录条目
     const state = { fullscreen: true, timestamp: Date.now() };
     try {
-        // 使用replaceState而不是pushState，这样不会增加历史记录
-        history.replaceState(state, '', window.location.href);
+        // 使用pushState添加历史记录
+        history.pushState(state, '', window.location.href);
     } catch (e) {
         console.log('添加历史记录失败:', e);
         return;

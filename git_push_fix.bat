@@ -8,6 +8,10 @@ git config --global core.quotepath false
 git config --global i18n.commitencoding utf-8
 git config --global i18n.logoutputencoding utf-8
 
+REM 远程仓库地址（按你当前项目）
+set "REPO_HTTPS=https://github.com/Cheezty/cici.git"
+set "REPO_SSH=git@github.com:Cheezty/cici.git"
+
 echo ========================================
 echo 开始推送代码到GitHub (编码修复版)
 echo ========================================
@@ -39,8 +43,8 @@ REM 推送前先拉取最新代码，避免冲突
 echo [5/7] 拉取远程main分支（rebase方式）...
 git pull --rebase origin main
 if %ERRORLEVEL% NEQ 0 (
-    echo 拉取失败，请处理冲突后重试。
-    goto END
+    echo 拉取失败，可能是网络不通或认证问题，尝试自动切换到SSH...
+    goto SSH_FALLBACK
 )
 
 echo [6/7] 检查远程仓库状态...
@@ -66,15 +70,60 @@ if %ERRORLEVEL% EQU 0 (
     echo.
     echo 错误代码: %ERRORLEVEL%
     echo.
-    echo 可能的原因：
-    echo 1. 网络连接问题
-    echo 2. GitHub认证问题
-    echo 3. 远程仓库权限或rebase冲突
-    echo.
-    echo 建议解决方案：
-    echo 1. 检查网络连接
-    echo 2. 重新配置GitHub认证
-    echo 3. 解决冲突後再执行: git pull --rebase origin main ^&^& git push origin main
+    echo 尝试自动切换到 SSH(443) 推送...
+    goto SSH_FALLBACK
+)
+
+goto END
+
+REM ============== SSH Fallback （自动切换到SSH:443） ==============
+:
+:
+SSH_FALLBACK
+echo.
+echo ----------------------------------------
+echo 正在进行 SSH(443) 自动配置与推送...
+echo ----------------------------------------
+
+REM 1) 检查并生成SSH密钥（无口令）
+if not exist "%USERPROFILE%\.ssh" mkdir "%USERPROFILE%\.ssh" >nul 2>&1
+if not exist "%USERPROFILE%\.ssh\id_ed25519" (
+    echo 生成SSH密钥中（无需输入，几秒完成）...
+    ssh-keygen -t ed25519 -C "3106637361@qq.com" -f "%USERPROFILE%\.ssh\id_ed25519" -N "" >nul
+)
+
+REM 2) 写入 ~/.ssh/config 以走443端口
+set "CFG_PATH=%USERPROFILE%\.ssh\config"
+echo Host github.com>"%CFG_PATH%"
+echo   HostName ssh.github.com>>"%CFG_PATH%"
+echo   Port 443>>"%CFG_PATH%"
+echo   User git>>"%CFG_PATH%"
+echo   IdentityFile ~/.ssh/id_ed25519>>"%CFG_PATH%"
+
+REM 3) 显示公钥，提示用户添加到GitHub
+echo.
+echo 请将以下公钥添加到 GitHub: Settings ^> SSH and GPG keys ^> New SSH key
+echo ----------------- 复制下面整行开始 -----------------
+type "%USERPROFILE%\.ssh\id_ed25519.pub"
+echo ----------------- 复制上面整行结束 -----------------
+echo 添加完成后按任意键继续推送...
+pause >nul
+
+REM 4) 将 origin 切换为SSH地址
+git remote set-url origin %REPO_SSH%
+echo 当前远程地址:
+git remote -v
+
+REM 5) 再次尝试拉取与推送（SSH）
+git pull --rebase origin main
+git push origin main
+if %ERRORLEVEL% EQU 0 (
+    echo ✅ 通过SSH推送成功！
+    goto END
+) else (
+    echo ❌ SSH推送仍失败。常见原因：未在GitHub添加SSH Key或网络被完全阻断。
+    echo 请确认已添加公钥后重试，或把错误截图发我。
+    goto END
 )
 
 :END

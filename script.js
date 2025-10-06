@@ -36,9 +36,6 @@ function setupVideoEvents() {
             video.removeAttribute('poster');
         }
         
-        // 尝试根据视频路径自动匹配同名封面图（无需改HTML）
-        tryApplyGuessedPoster(video);
-        
         // 视频加载事件
         video.addEventListener('loadstart', showLoading);
         video.addEventListener('loadeddata', hideLoading);
@@ -147,7 +144,9 @@ function playFullscreen(videoElement) {
     }
     // 清空旧的子节点，避免残留 <source>
     fullscreenVideo.innerHTML = '';
-    // 统一采用直接设置 video.src 的方式，兼容性更好
+    // 统一采用直接设置 video.src 的方式，兼容性更好；关闭默认静音
+    fullscreenVideo.removeAttribute('muted');
+    fullscreenVideo.muted = false;
     fullscreenVideo.setAttribute('src', resolvedSrc); // 设置解析到的视频地址
     // 如有类型信息可附带，但不是必须
     if (resolvedType) { // 如果存在 MIME 类型
@@ -524,17 +523,7 @@ function onVideoEnd(e) {
 
 // 懒加载设置
 function setupLazyLoading() {
-    console.log('设置懒加载');
-    
-    // 混合策略：视频使用“提前触发的懒加载”，图片使用懒加载
-    setupVideoProactiveLazyLoad();
-    
-    if (!window.IntersectionObserver) {
-        console.log('浏览器不支持 IntersectionObserver，图片改为直接加载');
-        loadAllImagesImmediately();
-        return;
-    }
-    
+    // 采用备份文件的简单懒加载逻辑
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -548,13 +537,28 @@ function setupLazyLoading() {
             }
         });
     }, {
-        rootMargin: '600px' // 提前触发，提升首帧可见速度
+        rootMargin: '50px'
     });
     
-    // 仅对图片做懒加载
+    const videos = document.querySelectorAll('video[data-src]');
     const images = document.querySelectorAll('img[data-src]');
-    console.log('找到懒加载图片:', images.length);
+    videos.forEach(video => observer.observe(video));
     images.forEach(img => observer.observe(img));
+    
+    setTimeout(() => {
+        videos.forEach(video => {
+            const rect = video.getBoundingClientRect();
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+                loadVideoLazily(video);
+            }
+        });
+        images.forEach(img => {
+            const rect = img.getBoundingClientRect();
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+                loadImageLazily(img);
+            }
+        });
+    }, 100);
 }
 
 function loadVideoLazily(video) {

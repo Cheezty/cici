@@ -31,10 +31,7 @@ function setupVideoEvents() {
     videos.forEach((video, index) => {
         console.log(`设置视频 ${index} 事件监听`);
         
-        // 为所有视频设置默认 poster，避免灰屏
-        if (!video.getAttribute('poster')) {
-            video.setAttribute('poster', 'assets/images/avatar.jpg');
-        }
+        // 移除强制头像poster，改为加载后自动生成首帧poster，避免灰屏
         
         // 视频加载事件
         video.addEventListener('loadstart', showLoading);

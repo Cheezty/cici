@@ -32,6 +32,9 @@ function setupVideoEvents() {
         console.log(`设置视频 ${index} 事件监听`);
         
         // 移除强制头像poster，改为加载后自动生成首帧poster，避免灰屏
+        if (video.getAttribute('poster') === 'assets/images/avatar.jpg') {
+            video.removeAttribute('poster');
+        }
         
         // 视频加载事件
         video.addEventListener('loadstart', showLoading);
@@ -542,7 +545,7 @@ function setupLazyLoading() {
             }
         });
     }, {
-        rootMargin: '50px'
+        rootMargin: '600px' // 提前触发，提升首帧可见速度
     });
     
     // 仅对图片做懒加载
@@ -556,12 +559,17 @@ function loadVideoLazily(video) {
     console.log('懒加载视频:', dataSrc);
     
     if (dataSrc) {
+        // 优先尝试应用本地缓存的poster
+        tryApplyCachedPoster(video);
+        
         video.src = dataSrc;
         video.preload = 'metadata';
         video.load();
         
         video.addEventListener('loadeddata', function() {
             console.log('视频懒加载成功:', dataSrc);
+            // 元数据就绪后尝试抓取首帧并缓存为poster
+            tryGenerateAndCachePoster(video);
         }, { once: true });
     }
 }
@@ -633,6 +641,8 @@ function ensureVideoSrc(video) {
     if (!src) src = video.getAttribute('data-src') || video.getAttribute('src') || '';
     if (src) {
         ensureVideoAttributes(video);
+        // 应用缓存的poster，提升首帧可见速度
+        tryApplyCachedPoster(video);
         video.src = src;
         try { video.load(); } catch (e) { console.log('video.load() 异常:', e); }
     }
@@ -645,6 +655,54 @@ function ensureVideoAttributes(video) {
     video.setAttribute('x5-playsinline', '');
     video.setAttribute('muted', '');
     video.setAttribute('preload', 'metadata');
+}
+
+// 解析视频的唯一key（基于最终播放URL）
+function resolveVideoSrc(video) {
+    const source = video.querySelector('source');
+    return (source && (source.getAttribute('data-src') || source.getAttribute('src'))) ||
+           video.getAttribute('data-src') ||
+           video.getAttribute('src') || '';
+}
+
+// 从缓存读取poster
+function loadPosterFromCache(key) {
+    if (!key || !window.localStorage) return '';
+    try { return localStorage.getItem('poster:'+key) || ''; } catch(_) { return ''; }
+}
+
+// 保存poster到缓存
+function savePosterToCache(key, dataURL) {
+    if (!key || !dataURL || !window.localStorage) return;
+    try { localStorage.setItem('poster:'+key, dataURL); } catch(_) {}
+}
+
+// 尝试应用缓存的poster
+function tryApplyCachedPoster(video) {
+    const k = resolveVideoSrc(video);
+    const cached = loadPosterFromCache(k);
+    if (cached && !video.getAttribute('poster')) {
+        video.setAttribute('poster', cached);
+    }
+}
+
+// 生成并缓存poster
+function tryGenerateAndCachePoster(video) {
+    const width = video.videoWidth || 0;
+    const height = video.videoHeight || 0;
+    if (!width || !height) return;
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        try { if (video.currentTime < 0.1) video.currentTime = 0.1; } catch(_) {}
+        ctx.drawImage(video, 0, 0, width, height);
+        const dataURL = canvas.toDataURL('image/jpeg', 0.75);
+        if (dataURL.indexOf('data:image') === 0) {
+            if (!video.getAttribute('poster')) video.setAttribute('poster', dataURL);
+            savePosterToCache(resolveVideoSrc(video), dataURL);
+        }
+    } catch(_) {}
 }
 
 // 立即加载所有图片（当不支持 IntersectionObserver 时使用）

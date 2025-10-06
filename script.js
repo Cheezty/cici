@@ -36,6 +36,9 @@ function setupVideoEvents() {
             video.removeAttribute('poster');
         }
         
+        // 尝试根据视频路径自动匹配同名封面图（无需改HTML）
+        tryApplyGuessedPoster(video);
+        
         // 视频加载事件
         video.addEventListener('loadstart', showLoading);
         video.addEventListener('loadeddata', hideLoading);
@@ -684,6 +687,25 @@ function tryApplyCachedPoster(video) {
     if (cached && !video.getAttribute('poster')) {
         video.setAttribute('poster', cached);
     }
+}
+
+// 根据视频url猜测同名封面图并尝试加载（无需改HTML即可生效）
+function tryApplyGuessedPoster(video) {
+    if (video.getAttribute('poster')) return;
+    const src = resolveVideoSrc(video);
+    if (!src) return;
+    const base = src.replace(/\.[^/.]+$/, '');
+    const candidates = [base + '.jpg', base + '.jpeg', base + '.png', base + '.webp'];
+    const img = new Image();
+    let idx = 0;
+    const tryNext = () => {
+        if (idx >= candidates.length) return;
+        const url = candidates[idx++];
+        img.onload = () => { if (!video.getAttribute('poster')) video.setAttribute('poster', url); };
+        img.onerror = tryNext;
+        img.src = url;
+    };
+    tryNext();
 }
 
 // 生成并缓存poster

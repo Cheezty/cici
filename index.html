@@ -531,7 +531,7 @@
     <!-- 全屏视频播放器 -->
     <div id="fullscreen-modal" class="fullscreen-modal">
         <div class="close-btn" onclick="closeFullscreen()"></div>
-        <video id="fullscreen-video" controls></video>
+        <video id="fullscreen-video" controls playsinline webkit-playsinline x5-playsinline muted preload="metadata"></video>
         <div class="loading-indicator" id="loading-indicator">
             <div class="spinner"></div>
             <p>加载中...</p>

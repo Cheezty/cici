@@ -516,9 +516,12 @@ function onVideoEnd(e) {
 function setupLazyLoading() {
     console.log('设置懒加载');
     
+    // 为了保证移动端视频能尽快显示封面和可播放，视频不再使用懒加载，直接加载 metadata
+    loadAllVideosImmediately();
+    
     if (!window.IntersectionObserver) {
-        console.log('浏览器不支持 IntersectionObserver，跳过懒加载');
-        loadAllMedia();
+        console.log('浏览器不支持 IntersectionObserver，图片改为直接加载');
+        loadAllImagesImmediately();
         return;
     }
     
@@ -538,14 +541,9 @@ function setupLazyLoading() {
         rootMargin: '50px'
     });
     
-    // 观察所有视频和图片元素
-    const videos = document.querySelectorAll('video[data-src]');
+    // 仅对图片做懒加载，视频已即时加载
     const images = document.querySelectorAll('img[data-src]');
-    
-    console.log('找到懒加载视频:', videos.length);
     console.log('找到懒加载图片:', images.length);
-    
-    videos.forEach(video => observer.observe(video));
     images.forEach(img => observer.observe(img));
 }
 
@@ -578,20 +576,47 @@ function loadImageLazily(img) {
 function loadAllMedia() {
     console.log('加载所有媒体资源');
     
-    const videos = document.querySelectorAll('video[data-src]');
-    const images = document.querySelectorAll('img[data-src]');
-    
+    loadAllVideosImmediately();
+    loadAllImagesImmediately();
+}
+
+// 立即为所有视频设置 src 并加载 metadata，提升手机端首帧显示与可播放性
+function loadAllVideosImmediately() {
+    const videos = document.querySelectorAll('video');
+    console.log('立即加载视频数量:', videos.length);
     videos.forEach(video => {
-        const dataSrc = video.getAttribute('data-src');
-        if (dataSrc) {
-            video.src = dataSrc;
+        // 优先从 <source> data-src/src 获取地址
+        const source = video.querySelector('source');
+        let src = '';
+        if (source) {
+            src = source.getAttribute('data-src') || source.getAttribute('src') || '';
+        }
+        if (!src) {
+            src = video.getAttribute('data-src') || video.getAttribute('src') || '';
+        }
+        if (src) {
+            // 设置必要属性，保证移动端内联播放
+            video.setAttribute('playsinline', '');
+            video.setAttribute('webkit-playsinline', '');
+            video.setAttribute('x5-playsinline', '');
+            video.setAttribute('muted', '');
+            video.setAttribute('preload', 'metadata');
+            // 直接设置 video.src 并触发 load()
+            video.src = src;
+            try { video.load(); } catch (e) { console.log('video.load() 异常:', e); }
         }
     });
-    
+}
+
+// 立即加载所有图片（当不支持 IntersectionObserver 时使用）
+function loadAllImagesImmediately() {
+    const images = document.querySelectorAll('img[data-src]');
     images.forEach(img => {
         const dataSrc = img.getAttribute('data-src');
         if (dataSrc) {
             img.src = dataSrc;
+            img.classList.remove('lazy-image');
+            img.classList.add('loaded');
         }
     });
 }

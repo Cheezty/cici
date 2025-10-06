@@ -13,27 +13,41 @@ echo 开始推送代码到GitHub (编码修复版)
 echo ========================================
 echo.
 
-echo [1/6] 检查Git状态...
+echo [1/7] 检查Git状态...
 git status
 echo.
 
-echo [2/6] 添加所有修改的文件...
+echo [2/7] 添加所有修改的文件...
 git add .
 echo.
 
-echo [3/6] 检查暂存区状态...
+echo [3/7] 检查暂存区状态...
 git diff --cached --name-only
 echo.
 
-echo [4/6] 提交更改...
-git commit -m "修复移动端全屏交互：美化关闭按钮和优化返回键功能"
-echo.
+REM 判断是否有需要提交的改动
+git diff --cached --quiet
+if %ERRORLEVEL% EQU 0 (
+    echo 暂存区没有改动，跳过提交，进入同步流程...
+) else (
+    echo [4/7] 提交更改...
+    git commit -m "移动端视频加载兼容（微信/X5）与返回键稳定拦截；更新README"
+    echo.
+)
 
-echo [5/6] 检查远程仓库状态...
+REM 推送前先拉取最新代码，避免冲突
+echo [5/7] 拉取远程main分支（rebase方式）...
+git pull --rebase origin main
+if %ERRORLEVEL% NEQ 0 (
+    echo 拉取失败，请处理冲突后重试。
+    goto END
+)
+
+echo [6/7] 检查远程仓库状态...
 git remote -v
 echo.
 
-echo [6/6] 推送到GitHub...
+echo [7/7] 推送到GitHub...
 git push origin main
 echo.
 
@@ -55,14 +69,15 @@ if %ERRORLEVEL% EQU 0 (
     echo 可能的原因：
     echo 1. 网络连接问题
     echo 2. GitHub认证问题
-    echo 3. 远程仓库权限问题
+    echo 3. 远程仓库权限或rebase冲突
     echo.
     echo 建议解决方案：
     echo 1. 检查网络连接
     echo 2. 重新配置GitHub认证
-    echo 3. 手动执行: git push origin main
+    echo 3. 解决冲突後再执行: git pull --rebase origin main ^&^& git push origin main
 )
 
+:END
 echo.
 echo 按任意键退出...
 pause >nul

@@ -31,6 +31,11 @@ function setupVideoEvents() {
     videos.forEach((video, index) => {
         console.log(`设置视频 ${index} 事件监听`);
         
+        // 为所有视频设置默认 poster，避免灰屏
+        if (!video.getAttribute('poster')) {
+            video.setAttribute('poster', 'assets/images/avatar.jpg');
+        }
+        
         // 视频加载事件
         video.addEventListener('loadstart', showLoading);
         video.addEventListener('loadeddata', hideLoading);
@@ -44,6 +49,8 @@ function setupVideoEvents() {
         // 添加点击事件用于全屏播放
         video.addEventListener('click', function() {
             console.log('视频被点击，准备全屏播放');
+            // 若尚未设置 src，点击时立即设置并触发加载
+            ensureVideoSrc(video);
             playFullscreen(video);
         });
         
@@ -516,8 +523,8 @@ function onVideoEnd(e) {
 function setupLazyLoading() {
     console.log('设置懒加载');
     
-    // 为了保证移动端视频能尽快显示封面和可播放，视频不再使用懒加载，直接加载 metadata
-    loadAllVideosImmediately();
+    // 混合策略：视频使用“提前触发的懒加载”，图片使用懒加载
+    setupVideoProactiveLazyLoad();
     
     if (!window.IntersectionObserver) {
         console.log('浏览器不支持 IntersectionObserver，图片改为直接加载');
@@ -541,7 +548,7 @@ function setupLazyLoading() {
         rootMargin: '50px'
     });
     
-    // 仅对图片做懒加载，视频已即时加载
+    // 仅对图片做懒加载
     const images = document.querySelectorAll('img[data-src]');
     console.log('找到懒加载图片:', images.length);
     images.forEach(img => observer.observe(img));
@@ -576,65 +583,71 @@ function loadImageLazily(img) {
 function loadAllMedia() {
     console.log('加载所有媒体资源');
     
-    loadAllVideosImmediately();
+    // 视频改为主动懒加载，不使用一次性全部加载
     loadAllImagesImmediately();
 }
 
-// 立即为所有视频设置 src 并加载 metadata，提升手机端首帧显示与可播放性
-function loadAllVideosImmediately() {
+// 主动懒加载：元素进入视口前 600px 开始加载 metadata
+function setupVideoProactiveLazyLoad() {
     const videos = document.querySelectorAll('video');
-    console.log('立即加载视频数量:', videos.length);
-    videos.forEach((video, index) => {
-        // 优先从 <source> data-src/src 获取地址
-        const source = video.querySelector('source');
-        let src = '';
-        if (source) {
-            src = source.getAttribute('data-src') || source.getAttribute('src') || '';
+    console.log('设置视频主动懒加载数量:', videos.length);
+    
+    const prepare = (video, index) => {
+        ensureVideoAttributes(video); // 确保播放相关属性
+        if (!video.__events_bound) { // 绑定一次调试事件
+            video.addEventListener('loadstart', () => console.log(`视频 ${index} 开始加载`));
+            video.addEventListener('loadedmetadata', () => console.log(`视频 ${index} 元数据加载完成`));
+            video.addEventListener('canplay', () => console.log(`视频 ${index} 可以播放`));
+            video.addEventListener('error', (e) => console.error(`视频 ${index} 加载失败`, e));
+            video.__events_bound = true;
         }
-        if (!src) {
-            src = video.getAttribute('data-src') || video.getAttribute('src') || '';
-        }
-        
-        console.log(`视频 ${index} 解析到的地址:`, src);
-        
-        if (src) {
-            // 设置必要属性，保证移动端内联播放
-            video.setAttribute('playsinline', '');
-            video.setAttribute('webkit-playsinline', '');
-            video.setAttribute('x5-playsinline', '');
-            video.setAttribute('muted', '');
-            video.setAttribute('preload', 'metadata');
-            
-            // 添加加载事件监听
-            video.addEventListener('loadstart', () => {
-                console.log(`视频 ${index} 开始加载:`, src);
-            });
-            
-            video.addEventListener('loadedmetadata', () => {
-                console.log(`视频 ${index} 元数据加载完成:`, src);
-            });
-            
-            video.addEventListener('canplay', () => {
-                console.log(`视频 ${index} 可以播放:`, src);
-            });
-            
-            video.addEventListener('error', (e) => {
-                console.error(`视频 ${index} 加载失败:`, src, e);
-                console.error('错误详情:', e.target.error);
-            });
-            
-            // 直接设置 video.src 并触发 load()
-            video.src = src;
-            try { 
-                video.load(); 
-                console.log(`视频 ${index} 调用 load() 成功:`, src);
-            } catch (e) { 
-                console.error(`视频 ${index} load() 异常:`, src, e); 
+    };
+    
+    if (!('IntersectionObserver' in window)) {
+        // 不支持则直接在首屏和第二屏内的立即加载
+        videos.forEach((v, i) => { prepare(v, i); ensureVideoSrc(v); });
+        return;
+    }
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting || entry.intersectionRatio > 0) {
+                const video = entry.target;
+                const index = video.__index__ || 0;
+                prepare(video, index);
+                ensureVideoSrc(video); // 设置 src 并触发 load()
+                observer.unobserve(video);
             }
-        } else {
-            console.warn(`视频 ${index} 没有找到有效地址`);
-        }
+        });
+    }, { rootMargin: '600px 0px' });
+    
+    videos.forEach((video, index) => {
+        video.__index__ = index;
+        observer.observe(video);
     });
+}
+
+// 确保为视频设置 src（从 data-src 或 <source> 的 data-src/src 获取）
+function ensureVideoSrc(video) {
+    if (video.currentSrc || video.getAttribute('src')) { return; }
+    const source = video.querySelector('source');
+    let src = '';
+    if (source) src = source.getAttribute('data-src') || source.getAttribute('src') || '';
+    if (!src) src = video.getAttribute('data-src') || video.getAttribute('src') || '';
+    if (src) {
+        ensureVideoAttributes(video);
+        video.src = src;
+        try { video.load(); } catch (e) { console.log('video.load() 异常:', e); }
+    }
+}
+
+// 统一设置视频播放相关属性
+function ensureVideoAttributes(video) {
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.setAttribute('x5-playsinline', '');
+    video.setAttribute('muted', '');
+    video.setAttribute('preload', 'metadata');
 }
 
 // 立即加载所有图片（当不支持 IntersectionObserver 时使用）

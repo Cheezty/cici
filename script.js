@@ -328,36 +328,45 @@ function setupLazyLoading() {
     }, 100);
 }
 
-// 懒加载视频
+// 解析视频最终URL：优先拼接 meta[video-base-url]，回退本地相对路径
+function resolveVideoUrl(relativeOrAbsolutePath) {
+    const meta = document.querySelector('meta[name="video-base-url"]');
+    const base = meta ? (meta.getAttribute('content') || '').trim() : '';
+    // 已是绝对URL则直接返回
+    if (/^(https?:)?\/\//i.test(relativeOrAbsolutePath)) return relativeOrAbsolutePath;
+    // 未配置base则保持相对路径（本地 videos/）
+    if (!base) return relativeOrAbsolutePath;
+    const trimmedBase = base.replace(/\/?$/, '');
+    const trimmedPath = relativeOrAbsolutePath.replace(/^\//, '');
+    return `${trimmedBase}/${trimmedPath}`;
+}
+
+// 懒加载视频（支持OSS域名拼接）
 function loadVideoLazily(video) {
     const dataSrc = video.getAttribute('data-src');
-    console.log('Loading video:', dataSrc); // 调试信息
-    if (dataSrc) {
+    const finalUrl = dataSrc ? resolveVideoUrl(dataSrc) : '';
+    console.log('Loading video:', dataSrc, '=>', finalUrl); // 调试信息
+    if (dataSrc && finalUrl) {
         // 设置视频源
-        video.src = dataSrc;
-        
+        video.src = finalUrl;
         // 设置source标签
         const source = video.querySelector('source');
         if (source) {
-            source.src = dataSrc;
+            source.src = finalUrl;
         }
-        
         // 预加载元数据
         video.preload = 'metadata';
         video.load();
-        
         // 确保视频显示第一帧
         video.addEventListener('loadeddata', function() {
             this.currentTime = 0.1;
-            console.log('Video loaded successfully:', dataSrc); // 调试信息
         }, { once: true });
-        
         // 添加错误处理
         video.addEventListener('error', function(e) {
-            console.error('Video loading error:', dataSrc, e); // 调试信息
+            console.error('Video loading error:', finalUrl, e);
         }, { once: true });
     } else {
-        console.error('No data-src found for video:', video); // 调试信息
+        console.error('No data-src found for video or failed to resolve URL:', video);
     }
 }
 

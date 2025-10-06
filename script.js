@@ -584,7 +584,7 @@ function loadAllMedia() {
 function loadAllVideosImmediately() {
     const videos = document.querySelectorAll('video');
     console.log('立即加载视频数量:', videos.length);
-    videos.forEach(video => {
+    videos.forEach((video, index) => {
         // 优先从 <source> data-src/src 获取地址
         const source = video.querySelector('source');
         let src = '';
@@ -594,6 +594,9 @@ function loadAllVideosImmediately() {
         if (!src) {
             src = video.getAttribute('data-src') || video.getAttribute('src') || '';
         }
+        
+        console.log(`视频 ${index} 解析到的地址:`, src);
+        
         if (src) {
             // 设置必要属性，保证移动端内联播放
             video.setAttribute('playsinline', '');
@@ -601,9 +604,35 @@ function loadAllVideosImmediately() {
             video.setAttribute('x5-playsinline', '');
             video.setAttribute('muted', '');
             video.setAttribute('preload', 'metadata');
+            
+            // 添加加载事件监听
+            video.addEventListener('loadstart', () => {
+                console.log(`视频 ${index} 开始加载:`, src);
+            });
+            
+            video.addEventListener('loadedmetadata', () => {
+                console.log(`视频 ${index} 元数据加载完成:`, src);
+            });
+            
+            video.addEventListener('canplay', () => {
+                console.log(`视频 ${index} 可以播放:`, src);
+            });
+            
+            video.addEventListener('error', (e) => {
+                console.error(`视频 ${index} 加载失败:`, src, e);
+                console.error('错误详情:', e.target.error);
+            });
+            
             // 直接设置 video.src 并触发 load()
             video.src = src;
-            try { video.load(); } catch (e) { console.log('video.load() 异常:', e); }
+            try { 
+                video.load(); 
+                console.log(`视频 ${index} 调用 load() 成功:`, src);
+            } catch (e) { 
+                console.error(`视频 ${index} load() 异常:`, src, e); 
+            }
+        } else {
+            console.warn(`视频 ${index} 没有找到有效地址`);
         }
     });
 }

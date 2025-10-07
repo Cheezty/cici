@@ -341,6 +341,74 @@ function resolveVideoUrl(relativeOrAbsolutePath) {
     return `${trimmedBase}/${trimmedPath}`;
 }
 
+// 设备与浏览器检测（用于区分旧版 iOS Safari 行为）
+function getIOSVersion() {
+    // 从UA提取 iOS 主版本号，例如 iOS 16 返回 16
+    const ua = navigator.userAgent || '';
+    const match = ua.match(/OS\s(\d+)_/i);
+    return match ? parseInt(match[1], 10) : null; // 无法识别返回 null
+}
+
+function isIOSSafari() {
+    const ua = navigator.userAgent || '';
+    const isIOS = /iP(hone|ad|od)/i.test(ua);
+    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Fxios|OPiOS|EdgiOS/i.test(ua);
+    return isIOS && isSafari; // 仅原生Safari
+}
+
+// 基于首帧自动生成视频封面（兼容iOS）
+function generateVideoPoster(videoElement) {
+    // 容错：无有效尺寸直接返回
+    if (!videoElement || !videoElement.videoWidth || !videoElement.videoHeight) return; // 早退：无尺寸无法绘制
+
+    try {
+        // 创建画布并匹配视频原始宽高，避免拉伸
+        const canvas = document.createElement('canvas'); // 创建画布元素供绘制
+        canvas.width = videoElement.videoWidth; // 画布宽度与视频宽度一致
+        canvas.height = videoElement.videoHeight; // 画布高度与视频高度一致
+
+        const ctx = canvas.getContext('2d'); // 获取2D绘图上下文
+        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height); // 将视频当前帧绘制到画布
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8); // 导出JPEG数据URL（80%质量）
+        if (dataUrl && dataUrl.length > 32) {
+            videoElement.setAttribute('poster', dataUrl); // 设置视频poster属性为首帧图
+        }
+    } catch (err) {
+        // 常见原因：跨域资源导致画布被污染（tainted），需在视频资源端开启CORS
+        console.warn('生成视频首帧封面失败（可能为CORS限制）:', err); // 记录失败原因
+    }
+}
+
+// 在视频可寻址后，尝试定位到首帧并抓取画面
+function tryCaptureFirstFrame(videoElement) {
+    if (!videoElement) return; // 早退：无元素
+
+    // 如果已经存在poster则无需再生成
+    if (videoElement.getAttribute('poster')) return; // 已有封面直接跳过
+
+    // iOS上通常需要在loadeddata/canplay之后再seek，避免黑帧
+    const handleLoaded = () => {
+        // 使用极小时间偏移，规避某些解码器在0.0时返回黑帧
+        const onSeeked = () => {
+            generateVideoPoster(videoElement); // 已经seek到目标帧，执行画布抓取
+            videoElement.removeEventListener('seeked', onSeeked); // 清理seeked监听
+        };
+        videoElement.addEventListener('seeked', onSeeked); // 绑定seek完成回调
+        try {
+            videoElement.currentTime = Math.min(0.1, videoElement.duration || 0.1); // 移动到0.1秒位置
+        } catch (_) {
+            // 少数情况下会抛错，忽略并等待下次机会
+        }
+        videoElement.removeEventListener('loadeddata', handleLoaded); // 清理loadeddata监听
+        videoElement.removeEventListener('canplay', handleLoaded); // 清理canplay监听
+    };
+
+    // 绑定两个事件以最大化兼容性（不同浏览器触发时机略有差异）
+    videoElement.addEventListener('loadeddata', handleLoaded, { once: true }); // 数据可用时尝试seek
+    videoElement.addEventListener('canplay', handleLoaded, { once: true }); // 可播放时也尝试seek
+}
+
 // 懒加载视频（支持OSS域名拼接）
 function loadVideoLazily(video) {
     const dataSrc = video.getAttribute('data-src');
@@ -354,13 +422,34 @@ function loadVideoLazily(video) {
         if (source) {
             source.src = finalUrl;
         }
-        // 预加载元数据
+        // 旧版iOS内联播放兼容
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+
+        // 支持跨域抓帧：仅当确实跨域时才加，以避免同源下不必要的请求差异
+        try {
+            const pageOrigin = window.location.origin;
+            const videoOrigin = new URL(finalUrl, window.location.href).origin;
+            if (pageOrigin !== videoOrigin) {
+                video.setAttribute('crossorigin', 'anonymous');
+            }
+        } catch (_) {}
+        // 预加载元数据，节省带宽并满足iOS获取首帧的前提
         video.preload = 'metadata';
         video.load();
-        // 确保视频显示第一帧
-        video.addEventListener('loadeddata', function() {
-            this.currentTime = 0.1;
-        }, { once: true });
+        // 按设备差异决定是否主动抓帧
+        const iosVersion = getIOSVersion();
+        if (isIOSSafari() && (iosVersion === null || iosVersion <= 15)) {
+            // 旧版或未知版本iOS Safari更可能黑帧，立即抓帧
+            tryCaptureFirstFrame(video);
+        } else {
+            // 新版设备：延迟观察，若仍无poster则兜底抓一次
+            setTimeout(() => {
+                if (!video.getAttribute('poster')) {
+                    tryCaptureFirstFrame(video);
+                }
+            }, 1000);
+        }
         // 添加错误处理
         video.addEventListener('error', function(e) {
             console.error('Video loading error:', finalUrl, e);

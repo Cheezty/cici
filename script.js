@@ -17,6 +17,16 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeApp() {
     setupVideoEvents();
     setupFullscreenEvents();
+    // 初始化即应用封面，避免等待懒加载导致首屏未设置poster
+    try {
+        const posterVideos = document.querySelectorAll('video[data-poster]');
+        posterVideos.forEach(v => {
+            if (!v.getAttribute('poster')) {
+                const p = v.getAttribute('data-poster');
+                if (p) v.setAttribute('poster', p);
+            }
+        });
+    } catch (_) {}
     setupLazyLoading();  // 替换preloadVideos为懒加载
     setupResponsiveHandlers();
     preloadCriticalImages();  // 预加载关键图片

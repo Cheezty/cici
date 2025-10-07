@@ -7,10 +7,12 @@
     <!-- 可配置的视频基础域名（用于指向阿里云OSS/CDN）。为空则使用本地 videos/ 路径。 -->
     <meta name="video-base-url" content="https://cici-media.oss-cn-hongkong.aliyuncs.com">
     
-    <!-- 预加载关键资源 -->
+    <!-- 预加载关键资源（移除无效视频预加载，避免阻塞） -->
     <link rel="preload" href="assets/images/avatar.jpg" as="image">
     <link rel="preload" href="pictures/模卡1.jpg" as="image">
-    <link rel="preload" href="videos/intro.mp4" as="video">
+
+    <!-- 预连接到视频OSS域名，降低TLS握手延迟 -->
+    <link rel="preconnect" href="https://cici-media.oss-cn-hongkong.aliyuncs.com" crossorigin>
     
     <!-- DNS预解析 -->
     <link rel="dns-prefetch" href="//fonts.googleapis.com">
@@ -266,9 +268,10 @@
                         preload="none"
                         muted
                         playsinline
-                        data-src="videos/intro.mp4"
+                        data-src="https://outin-b8482c64a38911f0b71c00163e32360c.oss-cn-shanghai.aliyuncs.com/sv/3889f2c3-199bf1777c8/3889f2c3-199bf1777c8.mp4?Expires=1759853883&OSSAccessKeyId=LTAI8bKSZ6dKjf44&Signature=O6RzqVMZYFEplwHpZm%2FgtMPC74A%3D"
+                        data-poster="http://outin-b8482c64a38911f0b71c00163e32360c.oss-cn-shanghai.aliyuncs.com/90904498a38a71f0975d5017f1e90102/snapshots/32fe7cbf899143809a87a4845aef2820-00003.jpg?Expires=1759853707&OSSAccessKeyId=LTAI8bKSZ6dKjf44&Signature=ZZSJ696zs0imvMaHNIMkIbkRI0o%3D"
                     >
-                        <source data-src="videos/intro.mp4" type="video/mp4">
+                        <source data-src="https://outin-b8482c64a38911f0b71c00163e32360c.oss-cn-shanghai.aliyuncs.com/sv/3889f2c3-199bf1777c8/3889f2c3-199bf1777c8.mp4?Expires=1759853883&OSSAccessKeyId=LTAI8bKSZ6dKjf44&Signature=O6RzqVMZYFEplwHpZm%2FgtMPC74A%3D" type="video/mp4">
                         您的浏览器不支持视频播放。
                     </video>
                     <div class="play-overlay">
@@ -548,5 +551,4 @@
 
     <script src="script.js?v=20251007"></script>
 </body>
-
 </html>

@@ -417,6 +417,11 @@ function tryCaptureFirstFrame(videoElement) {
 // 懒加载视频（支持OSS域名拼接）
 function loadVideoLazily(video) {
     const dataSrc = video.getAttribute('data-src');
+    // 如果提供了data-poster，则优先设置封面（适配VOD截图URL）
+    const dataPoster = video.getAttribute('data-poster');
+    if (dataPoster && !video.getAttribute('poster')) {
+        try { video.setAttribute('poster', dataPoster); } catch (_) {}
+    }
     const finalUrl = dataSrc ? resolveVideoUrl(dataSrc) : '';
     console.log('Loading video:', dataSrc, '=>', finalUrl); // 调试信息
     if (dataSrc && finalUrl) {

@@ -187,7 +187,12 @@ function hideFullscreenLoading() {
 function handleVideoError(e) {
     console.error('视频加载错误:', e);
     hideLoading();
-    // 只在真正需要时显示错误提示
+    // 在 file:// 或本地开发时，可能因 CORS 无法抓帧导致误报，这里仅记录而不弹出提示
+    const isDevLike = !/^https?:$/i.test(window.location.protocol);
+    if (isDevLike) {
+        return; // 本地预览下不打扰用户
+    }
+    // 仅在线上 HTTP(S) 环境，且明确拿到资源URL时提示
     if (e.target && e.target.src) {
         console.log('视频文件路径:', e.target.src);
         showError('视频加载失败，请检查文件是否存在');
@@ -422,34 +427,13 @@ function loadVideoLazily(video) {
         if (source) {
             source.src = finalUrl;
         }
-        // 旧版iOS内联播放兼容
-        video.setAttribute('playsinline', '');
-        video.setAttribute('webkit-playsinline', '');
-
-        // 支持跨域抓帧：仅当确实跨域时才加，以避免同源下不必要的请求差异
-        try {
-            const pageOrigin = window.location.origin;
-            const videoOrigin = new URL(finalUrl, window.location.href).origin;
-            if (pageOrigin !== videoOrigin) {
-                video.setAttribute('crossorigin', 'anonymous');
-            }
-        } catch (_) {}
-        // 预加载元数据，节省带宽并满足iOS获取首帧的前提
+        // 预加载元数据
         video.preload = 'metadata';
         video.load();
-        // 按设备差异决定是否主动抓帧
-        const iosVersion = getIOSVersion();
-        if (isIOSSafari() && (iosVersion === null || iosVersion <= 15)) {
-            // 旧版或未知版本iOS Safari更可能黑帧，立即抓帧
-            tryCaptureFirstFrame(video);
-        } else {
-            // 新版设备：延迟观察，若仍无poster则兜底抓一次
-            setTimeout(() => {
-                if (!video.getAttribute('poster')) {
-                    tryCaptureFirstFrame(video);
-                }
-            }, 1000);
-        }
+        // 尝试在loadeddata后seek到0.1s以显示第一帧（旧逻辑）
+        video.addEventListener('loadeddata', function() {
+            try { this.currentTime = 0.1; } catch(_) {}
+        }, { once: true });
         // 添加错误处理
         video.addEventListener('error', function(e) {
             console.error('Video loading error:', finalUrl, e);

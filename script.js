@@ -445,10 +445,7 @@ function loadVideoLazily(video) {
         // 预加载元数据
         video.preload = 'metadata';
         video.load();
-        // 尝试在loadeddata后seek到0.1s以显示第一帧（旧逻辑）
-        video.addEventListener('loadeddata', function() {
-            try { this.currentTime = 0.1; } catch(_) {}
-        }, { once: true });
+        // 不再seek，让poster生效
         // 添加错误处理
         video.addEventListener('error', function(e) {
             console.error('Video loading error:', finalUrl, e);

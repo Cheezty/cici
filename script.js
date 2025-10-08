@@ -17,16 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeApp() {
     setupVideoEvents();
     setupFullscreenEvents();
-    // 初始化即应用封面，避免等待懒加载导致首屏未设置poster
-    try {
-        const posterVideos = document.querySelectorAll('video[data-poster]');
-        posterVideos.forEach(v => {
-            if (!v.getAttribute('poster')) {
-                const p = v.getAttribute('data-poster');
-                if (p) v.setAttribute('poster', p);
-            }
-        });
-    } catch (_) {}
+    // 封面由浏览器自动处理，无需JavaScript干预
     setupLazyLoading();  // 替换preloadVideos为懒加载
     setupResponsiveHandlers();
     preloadCriticalImages();  // 预加载关键图片
@@ -356,82 +347,10 @@ function resolveVideoUrl(relativeOrAbsolutePath) {
     return `${trimmedBase}/${trimmedPath}`;
 }
 
-// 设备与浏览器检测（用于区分旧版 iOS Safari 行为）
-function getIOSVersion() {
-    // 从UA提取 iOS 主版本号，例如 iOS 16 返回 16
-    const ua = navigator.userAgent || '';
-    const match = ua.match(/OS\s(\d+)_/i);
-    return match ? parseInt(match[1], 10) : null; // 无法识别返回 null
-}
-
-function isIOSSafari() {
-    const ua = navigator.userAgent || '';
-    const isIOS = /iP(hone|ad|od)/i.test(ua);
-    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Fxios|OPiOS|EdgiOS/i.test(ua);
-    return isIOS && isSafari; // 仅原生Safari
-}
-
-// 基于首帧自动生成视频封面（兼容iOS）
-function generateVideoPoster(videoElement) {
-    // 容错：无有效尺寸直接返回
-    if (!videoElement || !videoElement.videoWidth || !videoElement.videoHeight) return; // 早退：无尺寸无法绘制
-
-    try {
-        // 创建画布并匹配视频原始宽高，避免拉伸
-        const canvas = document.createElement('canvas'); // 创建画布元素供绘制
-        canvas.width = videoElement.videoWidth; // 画布宽度与视频宽度一致
-        canvas.height = videoElement.videoHeight; // 画布高度与视频高度一致
-
-        const ctx = canvas.getContext('2d'); // 获取2D绘图上下文
-        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height); // 将视频当前帧绘制到画布
-
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8); // 导出JPEG数据URL（80%质量）
-        if (dataUrl && dataUrl.length > 32) {
-            videoElement.setAttribute('poster', dataUrl); // 设置视频poster属性为首帧图
-        }
-    } catch (err) {
-        // 常见原因：跨域资源导致画布被污染（tainted），需在视频资源端开启CORS
-        console.warn('生成视频首帧封面失败（可能为CORS限制）:', err); // 记录失败原因
-    }
-}
-
-// 在视频可寻址后，尝试定位到首帧并抓取画面
-function tryCaptureFirstFrame(videoElement) {
-    if (!videoElement) return; // 早退：无元素
-
-    // 如果已经存在poster则无需再生成
-    if (videoElement.getAttribute('poster')) return; // 已有封面直接跳过
-
-    // iOS上通常需要在loadeddata/canplay之后再seek，避免黑帧
-    const handleLoaded = () => {
-        // 使用极小时间偏移，规避某些解码器在0.0时返回黑帧
-        const onSeeked = () => {
-            generateVideoPoster(videoElement); // 已经seek到目标帧，执行画布抓取
-            videoElement.removeEventListener('seeked', onSeeked); // 清理seeked监听
-        };
-        videoElement.addEventListener('seeked', onSeeked); // 绑定seek完成回调
-        try {
-            videoElement.currentTime = Math.min(0.1, videoElement.duration || 0.1); // 移动到0.1秒位置
-        } catch (_) {
-            // 少数情况下会抛错，忽略并等待下次机会
-        }
-        videoElement.removeEventListener('loadeddata', handleLoaded); // 清理loadeddata监听
-        videoElement.removeEventListener('canplay', handleLoaded); // 清理canplay监听
-    };
-
-    // 绑定两个事件以最大化兼容性（不同浏览器触发时机略有差异）
-    videoElement.addEventListener('loadeddata', handleLoaded, { once: true }); // 数据可用时尝试seek
-    videoElement.addEventListener('canplay', handleLoaded, { once: true }); // 可播放时也尝试seek
-}
 
 // 懒加载视频（支持OSS域名拼接）
 function loadVideoLazily(video) {
     const dataSrc = video.getAttribute('data-src');
-    // 如果提供了data-poster，则优先设置封面（适配VOD截图URL）
-    const dataPoster = video.getAttribute('data-poster');
-    if (dataPoster && !video.getAttribute('poster')) {
-        try { video.setAttribute('poster', dataPoster); } catch (_) {}
-    }
     const finalUrl = dataSrc ? resolveVideoUrl(dataSrc) : '';
     console.log('Loading video:', dataSrc, '=>', finalUrl); // 调试信息
     if (dataSrc && finalUrl) {
@@ -442,10 +361,8 @@ function loadVideoLazily(video) {
         if (source) {
             source.src = finalUrl;
         }
-        // 预加载元数据
-        video.preload = 'metadata';
+        // 预加载元数据（浏览器会自动显示首帧作为封面）
         video.load();
-        // 不再seek，让poster生效
         // 添加错误处理
         video.addEventListener('error', function(e) {
             console.error('Video loading error:', finalUrl, e);
@@ -482,65 +399,11 @@ function preloadCriticalImages() {
     });
 }
 
-// 响应式处理
+// 响应式处理（当前无需特殊处理）
 function setupResponsiveHandlers() {
-    let resizeTimer;
-    
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(handleResize, 250);
-    });
+    // 响应式布局由CSS处理，无需JavaScript干预
 }
 
-// 处理窗口大小变化
-function handleResize() {
-    // 重新计算视频布局
-    const videoGrid = document.querySelector('.video-grid');
-    if (videoGrid) {
-        // 可以在这里添加响应式调整逻辑
-        console.log('窗口大小变化，重新调整布局');
-    }
-}
-
-// 工具函数：防抖
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// 工具函数：节流
-function throttle(func, limit) {
-    let inThrottle;
-    return function() {
-        const args = arguments;
-        const context = this;
-        if (!inThrottle) {
-            func.apply(context, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
-        }
-    };
-}
-
-// 检测设备类型
-function isMobile() {
-    return window.innerWidth <= 767;
-}
-
-function isTablet() {
-    return window.innerWidth >= 768 && window.innerWidth <= 1023;
-}
-
-function isDesktop() {
-    return window.innerWidth >= 1024;
-}
 
 // 添加触摸反馈
 document.addEventListener('DOMContentLoaded', function() {
@@ -628,16 +491,24 @@ function closeImageFullscreen() {
     }
 }
 
+// 头像加载失败处理
+function handleAvatarError(imgElement) {
+    imgElement.style.display = 'none';
+    const emojiElement = imgElement.nextElementSibling;
+    if (emojiElement) {
+        emojiElement.style.display = 'flex';
+    }
+}
+
 // 导出函数供全局使用
 window.playFullscreen = playFullscreen;
 window.closeFullscreen = closeFullscreen;
 window.openImageFullscreen = openImageFullscreen;
 window.closeImageFullscreen = closeImageFullscreen;
+window.handleAvatarError = handleAvatarError;
 
 // 返回按钮处理相关变量
 let backButtonHandler = null;
-let isImageFullscreen = false;
-let backButtonBlocked = false; // 新增：标记是否阻止返回键
 
 // 设置返回按钮处理器
 function setupBackButtonHandler() {

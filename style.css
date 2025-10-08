@@ -72,7 +72,7 @@ body {
 .avatar-emoji {
     width: 100%;
     height: 100%;
-    display: flex;
+    display: none; /* 默认隐藏，头像加载失败时显示 */
     align-items: center;
     justify-content: center;
     font-size: 40px;

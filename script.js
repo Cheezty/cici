@@ -21,6 +21,7 @@ function initializeApp() {
     setupLazyLoading();  // 替换preloadVideos为懒加载
     setupResponsiveHandlers();
     preloadCriticalImages();  // 预加载关键图片
+    fetchFansCount();  // 获取粉丝数量
 }
 
 // 设置视频事件监听
@@ -592,4 +593,172 @@ function removeBackButtonHandler() {
     } catch (e) {
         console.log('清理历史记录失败:', e);
     }
+}
+
+// 格式化粉丝数量显示（将数字转换为易读格式，如 74609 -> 7.5万）
+function formatFansCount(count) {
+    if (!count || count === 0) return '0';
+    
+    // 如果小于1万，直接显示
+    if (count < 10000) {
+        return count.toString();
+    }
+    
+    // 如果小于10万，显示为 x.x万
+    if (count < 100000) {
+        const wan = (count / 10000).toFixed(1);
+        return wan + '万';
+    }
+    
+    // 如果小于1000万，显示为 xxx万
+    if (count < 10000000) {
+        const wan = Math.floor(count / 10000);
+        return wan + '万';
+    }
+    
+    // 如果大于等于1000万，显示为 xxxx万
+    const wan = (count / 10000).toFixed(0);
+    return wan + '万';
+}
+
+// 获取粉丝数量
+async function fetchFansCount() {
+    // 红果短剧个人主页的分享链接
+    const shareUrl = 'https://novelquickapp.com/s/sTekQviVCVs/';
+    
+    // 方法1: 尝试通过CORS代理获取页面HTML并解析数据
+    // 使用公共CORS代理服务（如果目标网站不支持CORS）
+    try {
+        // 使用 allorigins.win 作为CORS代理（免费公共代理服务）
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(shareUrl)}`;
+        const response = await fetch(proxyUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            const proxyData = await response.json();
+            const html = proxyData.contents;
+            
+            // 尝试从HTML中提取fans_count数据
+            // 方式1: 查找 "fans_count": 数字 格式
+            let jsonMatch = html.match(/"fans_count"\s*:\s*(\d+)/i);
+            if (!jsonMatch) {
+                // 方式2: 查找 fans_count: 数字 格式（无引号）
+                jsonMatch = html.match(/fans_count\s*:\s*(\d+)/i);
+            }
+            if (!jsonMatch) {
+                // 方式3: 查找包含fans_count的完整JSON对象
+                const jsonObjectMatch = html.match(/\{[^}]*"fans_count"\s*:\s*\d+[^}]*\}/i);
+                if (jsonObjectMatch) {
+                    try {
+                        const data = JSON.parse(jsonObjectMatch[0]);
+                        if (data.fans_count !== undefined) {
+                            updateFansCountDisplay(data.fans_count);
+                            return;
+                        }
+                    } catch (e) {
+                        console.log('解析JSON对象失败:', e);
+                    }
+                }
+            }
+            
+            if (jsonMatch) {
+                const fansCount = parseInt(jsonMatch[1]);
+                if (!isNaN(fansCount) && fansCount > 0) {
+                    updateFansCountDisplay(fansCount);
+                    return;
+                }
+            }
+        }
+    } catch (error) {
+        console.log('使用CORS代理获取数据失败:', error);
+    }
+    
+    // 方法2: 尝试直接访问可能的API端点（如果支持CORS）
+    const apiEndpoints = [
+        'https://novelquickapp.com/api/actor/info?share_id=sTekQviVCVs',
+        'https://novelquickapp.com/api/user/info?share_id=sTekQviVCVs',
+        'https://novelquickapp.com/hongguo/api/actor/info?share_id=sTekQviVCVs',
+    ];
+    
+    for (const endpoint of apiEndpoints) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'omit',
+                headers: {
+                    'Accept': 'application/json',
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.fans_count !== undefined) {
+                    updateFansCountDisplay(data.fans_count);
+                    return;
+                }
+            }
+        } catch (error) {
+            // 静默失败，继续尝试下一个端点
+            continue;
+        }
+    }
+    
+    // 方法3: 如果以上方法都失败，尝试使用其他CORS代理服务
+    try {
+        // 使用 corsproxy.io 作为备选代理
+        const proxyUrl2 = `https://corsproxy.io/?${encodeURIComponent(shareUrl)}`;
+        const response = await fetch(proxyUrl2, {
+            method: 'GET',
+        });
+        
+        if (response.ok) {
+            const html = await response.text();
+            const jsonMatch = html.match(/"fans_count"\s*:\s*(\d+)/i) || html.match(/fans_count\s*:\s*(\d+)/i);
+            
+            if (jsonMatch) {
+                const fansCount = parseInt(jsonMatch[1]);
+                if (!isNaN(fansCount) && fansCount > 0) {
+                    updateFansCountDisplay(fansCount);
+                    return;
+                }
+            }
+        }
+    } catch (error) {
+        console.log('使用备选CORS代理失败:', error);
+    }
+    
+    // 如果所有方法都失败，使用默认值
+    console.warn('无法获取粉丝数量，使用默认值 3.8w');
+    updateFansCountDisplay(null, true);
+}
+
+// 更新粉丝数量显示
+function updateFansCountDisplay(fansCount, isError = false) {
+    // 查找显示粉丝数的元素
+    const fansCountElement = document.getElementById('fans-count-display');
+    
+    if (!fansCountElement) {
+        console.error('找不到显示粉丝数的元素 (#fans-count-display)');
+        return;
+    }
+    
+    if (isError || fansCount === null) {
+        // 如果获取失败，显示默认值或错误提示
+        fansCountElement.textContent = '3.8w'; // 使用默认值
+        console.log('粉丝数量获取失败，使用默认值');
+        return;
+    }
+    
+    // 格式化粉丝数量
+    const formattedCount = formatFansCount(fansCount);
+    
+    // 更新显示
+    fansCountElement.textContent = formattedCount;
+    
+    console.log(`粉丝数量已更新: ${fansCount} -> ${formattedCount}`);
 }

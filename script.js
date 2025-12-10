@@ -1,6 +1,10 @@
 // 全局变量
 let currentVideo = null;
 let isFullscreen = false;
+let fansCountData = {
+    rawCount: null,        // 原始粉丝数量（数字）
+    isShowingDetail: false // 当前是否显示详细数量
+};
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -21,6 +25,7 @@ function initializeApp() {
     setupLazyLoading();  // 替换preloadVideos为懒加载
     setupResponsiveHandlers();
     preloadCriticalImages();  // 预加载关键图片
+    setupFansCountClick();  // 设置粉丝数量点击切换功能
     fetchFansCount();  // 获取粉丝数量
 }
 
@@ -677,38 +682,7 @@ async function fetchFansCount() {
         console.log('使用CORS代理获取数据失败:', error);
     }
     
-    // 方法2: 尝试直接访问可能的API端点（如果支持CORS）
-    const apiEndpoints = [
-        'https://novelquickapp.com/api/actor/info?share_id=sTekQviVCVs',
-        'https://novelquickapp.com/api/user/info?share_id=sTekQviVCVs',
-        'https://novelquickapp.com/hongguo/api/actor/info?share_id=sTekQviVCVs',
-    ];
-    
-    for (const endpoint of apiEndpoints) {
-        try {
-            const response = await fetch(endpoint, {
-                method: 'GET',
-                mode: 'cors',
-                credentials: 'omit',
-                headers: {
-                    'Accept': 'application/json',
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.fans_count !== undefined) {
-                    updateFansCountDisplay(data.fans_count);
-                    return;
-                }
-            }
-        } catch (error) {
-            // 静默失败，继续尝试下一个端点
-            continue;
-        }
-    }
-    
-    // 方法3: 如果以上方法都失败，尝试使用其他CORS代理服务
+    // 方法2: 尝试使用其他CORS代理服务（移除直接API访问，避免CORS错误）
     try {
         // 使用 corsproxy.io 作为备选代理
         const proxyUrl2 = `https://corsproxy.io/?${encodeURIComponent(shareUrl)}`;
@@ -737,6 +711,49 @@ async function fetchFansCount() {
     updateFansCountDisplay(null, true);
 }
 
+// 设置粉丝数量点击切换功能
+function setupFansCountClick() {
+    const fansCountElement = document.getElementById('fans-count-display');
+    
+    if (!fansCountElement) {
+        console.error('找不到显示粉丝数的元素 (#fans-count-display)');
+        return;
+    }
+    
+    // 添加提示文本（鼠标悬停时显示）
+    fansCountElement.title = '点击切换显示格式';
+    
+    // 添加点击事件
+    fansCountElement.addEventListener('click', function() {
+        toggleFansCountDisplay();
+    });
+}
+
+// 切换粉丝数量显示格式
+function toggleFansCountDisplay() {
+    const fansCountElement = document.getElementById('fans-count-display');
+    
+    if (!fansCountElement || fansCountData.rawCount === null) {
+        // 如果没有数据，不执行切换
+        return;
+    }
+    
+    // 切换显示状态
+    fansCountData.isShowingDetail = !fansCountData.isShowingDetail;
+    
+    // 根据状态更新显示
+    if (fansCountData.isShowingDetail) {
+        // 显示详细数量
+        fansCountElement.textContent = fansCountData.rawCount.toLocaleString('zh-CN');
+    } else {
+        // 显示格式化后的数量
+        const formattedCount = formatFansCount(fansCountData.rawCount);
+        fansCountElement.textContent = formattedCount;
+    }
+    
+    console.log(`粉丝数量显示已切换: ${fansCountData.isShowingDetail ? '详细' : '格式化'}`);
+}
+
 // 更新粉丝数量显示
 function updateFansCountDisplay(fansCount, isError = false) {
     // 查找显示粉丝数的元素
@@ -750,14 +767,19 @@ function updateFansCountDisplay(fansCount, isError = false) {
     if (isError || fansCount === null) {
         // 如果获取失败，显示默认值或错误提示
         fansCountElement.textContent = '3.8w'; // 使用默认值
+        fansCountData.rawCount = null; // 清除数据
         console.log('粉丝数量获取失败，使用默认值');
         return;
     }
     
+    // 保存原始数量
+    fansCountData.rawCount = fansCount;
+    fansCountData.isShowingDetail = false; // 默认显示格式化后的数量
+    
     // 格式化粉丝数量
     const formattedCount = formatFansCount(fansCount);
     
-    // 更新显示
+    // 更新显示（默认显示格式化后的数量）
     fansCountElement.textContent = formattedCount;
     
     console.log(`粉丝数量已更新: ${fansCount} -> ${formattedCount}`);

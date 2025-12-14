@@ -1,10 +1,6 @@
 // 全局变量
 let currentVideo = null;
 let isFullscreen = false;
-let fansCountData = {
-    rawCount: null,        // 原始粉丝数量（数字）
-    isShowingDetail: false // 当前是否显示详细数量
-};
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -25,7 +21,6 @@ function initializeApp() {
     setupLazyLoading();  // 替换preloadVideos为懒加载
     setupResponsiveHandlers();
     preloadCriticalImages();  // 预加载关键图片
-    setupFansCountClick();  // 设置粉丝数量点击切换功能
     fetchFansCount();  // 获取粉丝数量
 }
 
@@ -626,132 +621,171 @@ function formatFansCount(count) {
     return wan + '万';
 }
 
-// 获取粉丝数量
+// 获取粉丝数量 - 改进版：使用多个代理提高成功率
 async function fetchFansCount() {
+    console.log('🔄 开始获取粉丝数量...', new Date().toLocaleTimeString());
+    
     // 红果短剧个人主页的分享链接
     const shareUrl = 'https://novelquickapp.com/s/sTekQviVCVs/';
     
-    // 方法1: 尝试通过CORS代理获取页面HTML并解析数据
-    // 使用公共CORS代理服务（如果目标网站不支持CORS）
-    try {
-        // 使用 allorigins.win 作为CORS代理（免费公共代理服务）
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(shareUrl)}`;
-        const response = await fetch(proxyUrl, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-            }
-        });
-        
-        if (response.ok) {
-            const proxyData = await response.json();
-            const html = proxyData.contents;
+    // Vercel Serverless Function API（最稳定，在中国境内可用）
+    const vercelApiUrl = 'https://cici.lilinxi.cc/api/fans';
+    
+    // Cloudflare Worker URL（海外备用）
+    const workerUrl = 'https://cici-fans.3106637361.workers.dev?url=';
+    
+    // 配置多个CORS代理，按优先级排列（Vercel API 优先级最高）
+    const proxyConfigs = [
+        {
+            name: 'Vercel API',
+            url: vercelApiUrl,
+            type: 'vercel-api', // 特殊类型，返回 JSON 格式
+            headers: { 'Accept': 'application/json' }
+        },
+        {
+            name: 'Cloudflare Worker',
+            url: `${workerUrl}${encodeURIComponent(shareUrl)}`,
+            type: 'html',
+            headers: { 'Accept': 'text/html' }
+        },
+        {
+            name: 'AllOrigins',
+            url: `https://api.allorigins.win/get?url=${encodeURIComponent(shareUrl)}`,
+            type: 'json',
+            headers: { 'Accept': 'application/json' }
+        },
+        {
+            name: 'CorsProxy.io',
+            url: `https://corsproxy.io/?${encodeURIComponent(shareUrl)}`,
+            type: 'html',
+            headers: { 'Accept': 'text/html' }
+        },
+        {
+            name: 'CrossOrigin.tech',
+            url: `https://crossorigin.tech/${shareUrl}`,
+            type: 'html',
+            headers: { 'Accept': 'text/html' }
+        },
+        {
+            name: 'ThingProxy',
+            url: `https://thingproxy.freeboard.io/fetch/${shareUrl}`,
+            type: 'html',
+            headers: { 'Accept': 'text/html' }
+        }
+    ];
+    
+    // 依次尝试每个代理
+    for (const proxy of proxyConfigs) {
+        try {
+            console.log(`📡 尝试代理: ${proxy.name}`);
             
-            // 尝试从HTML中提取fans_count数据
-            // 方式1: 查找 "fans_count": 数字 格式
-            let jsonMatch = html.match(/"fans_count"\s*:\s*(\d+)/i);
-            if (!jsonMatch) {
-                // 方式2: 查找 fans_count: 数字 格式（无引号）
-                jsonMatch = html.match(/fans_count\s*:\s*(\d+)/i);
+            const response = await fetch(proxy.url, {
+                method: 'GET',
+                headers: proxy.headers
+            });
+            
+            if (!response.ok) {
+                console.log(`❌ ${proxy.name} 响应失败: ${response.status}`);
+                continue;
             }
-            if (!jsonMatch) {
-                // 方式3: 查找包含fans_count的完整JSON对象
-                const jsonObjectMatch = html.match(/\{[^}]*"fans_count"\s*:\s*\d+[^}]*\}/i);
-                if (jsonObjectMatch) {
-                    try {
-                        const data = JSON.parse(jsonObjectMatch[0]);
-                        if (data.fans_count !== undefined) {
-                            updateFansCountDisplay(data.fans_count);
-                            return;
-                        }
-                    } catch (e) {
-                        console.log('解析JSON对象失败:', e);
+            
+            // 解析响应内容
+            let html;
+            let fansCount = null;
+            
+            // 特殊处理 Vercel API（直接返回 JSON 格式）
+            if (proxy.type === 'vercel-api') {
+                const data = await response.json();
+                if (data.success && data.fansCount) {
+                    fansCount = data.fansCount;
+                    console.log(`✅ ${proxy.name} 获取成功，粉丝数: ${fansCount}`);
+                    updateFansCountDisplay(fansCount);
+                    return;
+                } else {
+                    console.log(`❌ ${proxy.name} 返回失败: ${data.error || '未知错误'}`);
+                    continue;
+                }
+            }
+            
+            // 其他代理返回 HTML 或 JSON
+            if (proxy.type === 'json') {
+                const data = await response.json();
+                html = data.contents || '';
+            } else {
+                html = await response.text();
+            }
+            
+            if (!html) {
+                console.log(`⚠️ ${proxy.name} 返回空内容`);
+                continue;
+            }
+            
+            console.log(`✅ ${proxy.name} 获取成功，HTML长度: ${html.length}`);
+            
+            // 方案1：多种正则匹配 fans_count
+            const regexPatterns = [
+                // 匹配: "fans_count":123 或 fans_count:123
+                /"?fans_count"?\s*:\s*(\d+)/i,
+                // 匹配: "fans_count":"123"
+                /"?fans_count"?\s*:\s*"(\d+)"/i,
+                // 匹配: fans_count: "123"
+                /fans_count\s*:\s*"(\d+)"/i,
+                // 匹配更宽松的格式
+                /fans[_\s-]*count["\s:]*(\d+)/i
+            ];
+            
+            for (const regex of regexPatterns) {
+                const match = html.match(regex);
+                if (match) {
+                    const fansCount = parseInt(match[1]);
+                    if (!isNaN(fansCount) && fansCount > 0) {
+                        console.log(`🎯 方案1成功: 粉丝数=${fansCount} (使用正则: ${regex})`);
+                        updateFansCountDisplay(fansCount);
+                        return;
                     }
                 }
             }
             
-            if (jsonMatch) {
-                const fansCount = parseInt(jsonMatch[1]);
-                if (!isNaN(fansCount) && fansCount > 0) {
+            // 方案2：尝试提取数字周围的上下文
+            const contextMatch = html.match(/fans_count[^0-9]*(\d{4,})/i);
+            if (contextMatch) {
+                const fansCount = parseInt(contextMatch[1]);
+                if (!isNaN(fansCount) && fansCount > 0 && fansCount < 100000000) {
+                    console.log(`🎯 方案2成功: 粉丝数=${fansCount} (上下文匹配)`);
                     updateFansCountDisplay(fansCount);
                     return;
                 }
             }
-        }
-    } catch (error) {
-        console.log('使用CORS代理获取数据失败:', error);
-    }
-    
-    // 方法2: 尝试使用其他CORS代理服务（移除直接API访问，避免CORS错误）
-    try {
-        // 使用 corsproxy.io 作为备选代理
-        const proxyUrl2 = `https://corsproxy.io/?${encodeURIComponent(shareUrl)}`;
-        const response = await fetch(proxyUrl2, {
-            method: 'GET',
-        });
-        
-        if (response.ok) {
-            const html = await response.text();
-            const jsonMatch = html.match(/"fans_count"\s*:\s*(\d+)/i) || html.match(/fans_count\s*:\s*(\d+)/i);
             
-            if (jsonMatch) {
-                const fansCount = parseInt(jsonMatch[1]);
-                if (!isNaN(fansCount) && fansCount > 0) {
-                    updateFansCountDisplay(fansCount);
-                    return;
+            // 方案3：DOM解析（备用）
+            try {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                const fansElement = tempDiv.querySelector('.fans-count, [data-fans], .fans');
+                if (fansElement) {
+                    const fansCount = parseInt(fansElement.textContent.trim().replace(/[^\d]/g, ''));
+                    if (!isNaN(fansCount) && fansCount > 0) {
+                        console.log(`🎯 方案3成功: 粉丝数=${fansCount}`);
+                        updateFansCountDisplay(fansCount);
+                        return;
+                    }
                 }
+            } catch (e) {
+                console.log(`⚠️ 方案3 DOM解析失败:`, e.message);
             }
+            
+            console.log(`⚠️ ${proxy.name} 未能提取粉丝数据`);
+            
+        } catch (error) {
+            console.log(`❌ ${proxy.name} 请求失败:`, error.message || error);
         }
-    } catch (error) {
-        console.log('使用备选CORS代理失败:', error);
     }
     
-    // 如果所有方法都失败，使用默认值
-    console.warn('无法获取粉丝数量，使用默认值 3.8w');
-    updateFansCountDisplay(null, true);
-}
-
-// 设置粉丝数量点击切换功能
-function setupFansCountClick() {
-    const fansCountElement = document.getElementById('fans-count-display');
-    
-    if (!fansCountElement) {
-        console.error('找不到显示粉丝数的元素 (#fans-count-display)');
-        return;
-    }
-    
-    // 添加提示文本（鼠标悬停时显示）
-    fansCountElement.title = '点击切换显示格式';
-    
-    // 添加点击事件
-    fansCountElement.addEventListener('click', function() {
-        toggleFansCountDisplay();
-    });
-}
-
-// 切换粉丝数量显示格式
-function toggleFansCountDisplay() {
-    const fansCountElement = document.getElementById('fans-count-display');
-    
-    if (!fansCountElement || fansCountData.rawCount === null) {
-        // 如果没有数据，不执行切换
-        return;
-    }
-    
-    // 切换显示状态
-    fansCountData.isShowingDetail = !fansCountData.isShowingDetail;
-    
-    // 根据状态更新显示
-    if (fansCountData.isShowingDetail) {
-        // 显示详细数量
-        fansCountElement.textContent = fansCountData.rawCount.toLocaleString('zh-CN');
-    } else {
-        // 显示格式化后的数量
-        const formattedCount = formatFansCount(fansCountData.rawCount);
-        fansCountElement.textContent = formattedCount;
-    }
-    
-    console.log(`粉丝数量显示已切换: ${fansCountData.isShowingDetail ? '详细' : '格式化'}`);
+    // 如果所有代理都失败，使用最后已知的粉丝数（根据最近一次成功获取的数据）
+    console.warn('❌ 所有代理均失败，使用最后已知数据 7.9万');
+    console.warn('💡 提示：目标网站可能存在地域限制，在中国境内可能无法访问');
+    // 使用 78535（最后成功获取的数据）作为默认值
+    updateFansCountDisplay(78535, false);
 }
 
 // 更新粉丝数量显示
@@ -764,22 +798,24 @@ function updateFansCountDisplay(fansCount, isError = false) {
         return;
     }
     
-    if (isError || fansCount === null) {
-        // 如果获取失败，显示默认值或错误提示
-        fansCountElement.textContent = '3.8w'; // 使用默认值
-        fansCountData.rawCount = null; // 清除数据
-        console.log('粉丝数量获取失败，使用默认值');
+    if (isError) {
+        // 如果获取失败，显示默认值
+        fansCountElement.textContent = '7.9w'; // 使用最后已知的粉丝数
+        console.log('粉丝数量获取失败，使用默认值 7.9万');
         return;
     }
     
-    // 保存原始数量
-    fansCountData.rawCount = fansCount;
-    fansCountData.isShowingDetail = false; // 默认显示格式化后的数量
+    if (fansCount === null) {
+        // 如果没有数据，显示默认值
+        fansCountElement.textContent = '7.9w';
+        console.log('无粉丝数据，使用默认值 7.9万');
+        return;
+    }
     
     // 格式化粉丝数量
     const formattedCount = formatFansCount(fansCount);
     
-    // 更新显示（默认显示格式化后的数量）
+    // 更新显示
     fansCountElement.textContent = formattedCount;
     
     console.log(`粉丝数量已更新: ${fansCount} -> ${formattedCount}`);
